@@ -1,0 +1,13 @@
+{
+  "name": "sodh-link-finder-mvp",
+  "version": "1.0.0",
+  "description": "Minimal SoDH / Population Health secondary-data link finder",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

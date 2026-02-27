@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SoDH Link Finder MVP</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header>
+        <h1>SoDH / Population Health Link Finder</h1>
+        <p class="subtitle">Minimal MVP with real provider search only</p>
+      </header>
+
+      <nav class="tabs" aria-label="Primary tabs">
+        <button type="button" id="tab-search" class="tab active" data-tab="search">Search</button>
+        <button type="button" id="tab-history" class="tab" data-tab="history">History</button>
+      </nav>
+
+      <section id="view-search" class="view active" aria-labelledby="tab-search">
+        <div class="search-controls">
+          <input
+            id="query-input"
+            type="text"
+            placeholder="e.g., Median household income"
+            autocomplete="off"
+          />
+          <button id="search-button" type="button">Search</button>
+        </div>
+
+        <p id="loading-indicator" class="status hidden">Searching...</p>
+        <div id="error-panel" class="panel error hidden"></div>
+        <div id="setup-panel" class="panel setup hidden"></div>
+        <p id="result-context" class="status hidden"></p>
+
+        <ul id="results-list" class="results"></ul>
+      </section>
+
+      <section id="view-history" class="view" aria-labelledby="tab-history">
+        <div class="history-actions">
+          <button id="clear-history" type="button" class="danger">Clear History</button>
+        </div>
+        <div id="history-empty" class="panel">No searches yet.</div>
+        <table id="history-table" class="history-table hidden">
+          <thead>
+            <tr>
+              <th>Query</th>
+              <th>Timestamp</th>
+              <th>Results</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="history-body"></tbody>
+        </table>
+      </section>
+    </main>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

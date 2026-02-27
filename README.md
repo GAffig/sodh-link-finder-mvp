@@ -1,0 +1,140 @@
+# SoDH / Population Health Link Finder MVP
+
+Minimal two-tab web app that returns ranked **real** web links for secondary-data references.
+
+Tabs/pages included:
+- Search
+- History
+
+No extra pages or advanced features are included.
+
+## What This MVP Does
+
+- Accepts a query (for example: `Median household income`, `Food insecurity`, `Life expectancy by county`).
+- Runs deterministic two-stage search:
+  - Stage A: priority-domain restricted query
+  - Stage B: unrestricted fallback only if Stage A returns fewer than 8 results
+- Ranks results using deterministic rules only:
+  - priority-domain bonus
+  - keyword overlap in title/snippet
+  - query-term match in URL
+- Stores search history in browser `localStorage` with:
+  - query
+  - timestamp
+  - returned results (title, url, snippet, domain, priority flag)
+- Allows replaying saved results from History without re-running search.
+
+## Tech Stack
+
+- Backend: Node.js (`http`, native `fetch`)
+- Frontend: vanilla HTML/CSS/JavaScript
+- Storage: browser `localStorage` for history
+
+## Provider Support and Environment Variables
+
+Provider selection order (automatic):
+1. `BRAVE_API_KEY`
+2. `SERPAPI_KEY`
+3. `BING_API_KEY`
+
+Exact env vars used:
+- `BRAVE_API_KEY`
+- `SERPAPI_KEY`
+- `BING_API_KEY`
+- `PORT` (optional, default `3000`)
+
+If no key is present, the app runs in **Not Configured** mode and does not perform any search.
+
+## Local Run
+
+1. Ensure Node.js 18+ is installed.
+2. Create a `.env` file in the project root.
+3. Add at least one provider key.
+4. Start the server.
+5. Open the app in your browser.
+
+```bash
+cp .env.example .env
+# edit .env and set one key
+npm start
+# open http://localhost:3000
+```
+
+## Setup Search Provider Keys
+
+### Option A: Brave Search API (implemented first)
+
+1. Create or sign in to a Brave Search API account.
+2. Create an API subscription/key in the provider dashboard.
+3. Copy the key into `.env`:
+
+```env
+BRAVE_API_KEY=your_brave_key
+```
+
+4. Restart the app.
+
+### Option B: SerpAPI
+
+1. Create a SerpAPI account.
+2. Copy your API key from the dashboard.
+3. Put it in `.env`:
+
+```env
+SERPAPI_KEY=your_serpapi_key
+```
+
+4. Restart the app.
+
+### Option C: Bing Web Search API
+
+1. Create an Azure resource for Bing Web Search.
+2. Copy the subscription key.
+3. Put it in `.env`:
+
+```env
+BING_API_KEY=your_bing_key
+```
+
+4. Restart the app.
+
+## Basic Cost / Rate Limit Notes
+
+- Brave, SerpAPI, and Bing pricing/limits depend on your account plan and can change.
+- Free/trial tiers are typically available for initial testing.
+- Expect strict per-minute or monthly quotas on free tiers.
+- For production, verify current quotas/pricing in each provider dashboard before heavy usage.
+
+## Not Configured Behavior
+
+If no provider key is configured:
+- Search requests are blocked.
+- The Search tab shows a setup panel with exact configuration steps.
+- No mock results are returned.
+
+## Priority Domains Used for Ranking and Stage A Search
+
+- `cdc.gov`
+- `census.gov`
+- `countyhealthrankings.org`
+- `bls.gov`
+- `ers.usda.gov`
+- `cms.gov`
+- `hhs.gov`
+- `acf.hhs.gov`
+- `tn.gov`
+- `vdh.virginia.gov`
+- `irs.gov`
+- `nces.ed.gov`
+- `transportation.gov`
+- `hud.gov`
+- `epa.gov`
+- `ucr.fbi.gov`
+- `feedingamerica.org`
+- `opportunityinsights.org`
+- `urban.org`
+- `sparkmaps.com`
+- `droughtmonitor.unl.edu`
+- `impactlab.org`
+- `cnt.org`
+- `hifld-geoplatform.opendata.arcgis.com`
