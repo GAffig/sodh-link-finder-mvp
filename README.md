@@ -60,6 +60,37 @@ npm start
 # open http://localhost:3000
 ```
 
+## Deploy on Render
+
+This repo includes a Render Blueprint file: `render.yaml`.
+
+### Option A: Blueprint (fastest)
+
+1. Push latest `master` to GitHub.
+2. In Render, click **New +** -> **Blueprint**.
+3. Connect `GAffig/sodh-link-finder-mvp`.
+4. Render will read `render.yaml` and create the web service.
+5. In service environment variables, set at least one key:
+   - `BRAVE_API_KEY` (preferred), or
+   - `SERPAPI_KEY`, or
+   - `BING_API_KEY`
+6. Deploy and open the generated `onrender.com` URL.
+
+### Option B: Manual Web Service
+
+1. In Render, click **New +** -> **Web Service**.
+2. Select repository: `GAffig/sodh-link-finder-mvp`.
+3. Set:
+   - Runtime: `Node`
+   - Build Command: `npm install --no-audit --no-fund`
+   - Start Command: `npm start`
+4. Add environment variable(s):
+   - `BRAVE_API_KEY` (preferred), or fallback keys above
+5. Create Web Service and wait for deploy.
+
+After deploy, share the Render URL with teammates.  
+If keys are missing, the app still loads but Search shows **Not Configured** setup steps.
+
 ## Relevance Regression Harness
 
 Use the golden-query harness to measure ranking quality on real provider results.

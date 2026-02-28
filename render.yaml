@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: population-health-evidence-portal
+    runtime: node
+    buildCommand: npm install --no-audit --no-fund
+    startCommand: npm start
+    autoDeploy: true
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: BRAVE_API_KEY
+        sync: false
+      - key: SERPAPI_KEY
+        sync: false
+      - key: BING_API_KEY
+        sync: false
