@@ -126,6 +126,12 @@ Run extended suite with team analyst prompt pack:
 npm run test:relevance:team
 ```
 
+Run extended suite drift check:
+
+```bash
+npm run test:relevance:team:drift
+```
+
 Harness defaults to `standard` cost mode for baseline comparability. To run lower-cost checks:
 
 ```bash
@@ -166,6 +172,7 @@ Golden query definitions:
 
 - `tests/relevance/golden-queries.json`
 - `tests/relevance/team-analyst-prompts-v1.json` (team workflow prompts)
+- `tests/relevance/baseline-team-summary.json` (extended suite baseline)
 - Core suite size: `28` cases
 - Extended suite size: `38` cases (core + team v1)
 

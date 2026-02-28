@@ -11,6 +11,7 @@
     "test:relevance": "node scripts/relevance-check.js",
     "test:relevance:team": "node scripts/relevance-check.js --file tests/relevance/golden-queries.json --extra-files tests/relevance/team-analyst-prompts-v1.json",
     "test:relevance:drift": "node scripts/relevance-drift-report.js",
+    "test:relevance:team:drift": "node scripts/relevance-drift-report.js --report-file artifacts/relevance-report-team.json --baseline-file tests/relevance/baseline-team-summary.json",
     "test:relevance:baseline:update": "node scripts/relevance-baseline-update.js"
   },
   "engines": {

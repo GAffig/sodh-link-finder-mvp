@@ -29,7 +29,7 @@ Status: COMPLETE
 
 - [x] Phase 2 planning: define optional query normalization rules that do not alter authority ranking.
 - [x] Add baseline update protocol for quarterly recalibration of `tests/relevance/baseline-summary.json`.
-- [ ] Run and baseline the extended team prompt suite (`tests/relevance/team-analyst-prompts-v1.json`) after provider quota reset.
+- [x] Run and baseline the extended team prompt suite (`tests/relevance/team-analyst-prompts-v1.json`) after provider quota reset.
 
 ### Newly Shipped (Latest Cycle)
 
@@ -37,6 +37,7 @@ Status: COMPLETE
 - [x] Automatic weak-result upgrade from `economy` to `standard` with configurable thresholds.
 - [x] Server-side response cache for repeated queries (`SEARCH_CACHE_TTL_MS`, `SEARCH_CACHE_MAX_ENTRIES`).
 - [x] Search UI visibility for efficiency mode and per-search provider call usage metadata.
+- [x] Extended relevance suite baseline established (`tests/relevance/baseline-team-summary.json`) at 38/38 passing.
 
 ## Phase 2 - Assisted Search (Future)
 

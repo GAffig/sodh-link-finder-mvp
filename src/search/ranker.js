@@ -177,6 +177,16 @@ const TOPIC_DOMAIN_BOOST_RULES = [
     triggerTerms: ["transit", "transportation", "commute", "mobility"],
     domains: ["transportation.gov", "cnt.org", "tn.gov"],
     bonus: 390
+  },
+  {
+    triggerTerms: ["homeless", "homelessness", "shelter", "unsheltered"],
+    domains: ["hud.gov", "tn.gov", "countyhealthrankings.org", "hhs.gov", "acf.hhs.gov"],
+    bonus: 430
+  },
+  {
+    triggerTerms: ["childcare", "daycare", "headstart", "prekindergarten"],
+    domains: ["acf.hhs.gov", "hhs.gov", "tn.gov", "countyhealthrankings.org"],
+    bonus: 430
   }
 ];
 
@@ -664,9 +674,19 @@ function shouldSeedDataCensus(queryContext) {
 }
 
 function tokenize(value) {
-  const tokens = value.toLowerCase().match(/[a-z0-9]+/g) || [];
+  const lowerValue = value.toLowerCase();
+  const tokens = lowerValue.match(/[a-z0-9]+/g) || [];
   const filtered = tokens.filter((token) => token.length > 1);
-  return [...new Set(filtered)];
+  const tokenSet = new Set(filtered);
+
+  if (/\bchild\s+care\b/.test(lowerValue)) {
+    tokenSet.add("childcare");
+  }
+  if (/\bhead\s+start\b/.test(lowerValue)) {
+    tokenSet.add("headstart");
+  }
+
+  return [...tokenSet];
 }
 
 function computeTermCoverage(terms, lowerTitle, lowerSnippet, lowerUrl) {

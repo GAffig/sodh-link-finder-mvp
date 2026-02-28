@@ -1,0 +1,20 @@
+{
+  "generatedAt": "2026-02-28T23:06:23.184Z",
+  "provider": "brave",
+  "caseCount": 38,
+  "passedCount": 38,
+  "failedCount": 0,
+  "passRate": 1,
+  "maxFailIncrease": 3,
+  "maxPassRateDrop": 0.15,
+  "criticalCases": [
+    "Chronic absenteeism (TN + VA)",
+    "Incarceration rate",
+    "Drought monitor",
+    "Opportunity Atlas",
+    "Medicaid enrollment",
+    "Transit access",
+    "Homelessness data",
+    "Workflow - child care access"
+  ]
+}
