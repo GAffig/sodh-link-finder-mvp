@@ -60,6 +60,30 @@ npm start
 # open http://localhost:3000
 ```
 
+## Relevance Regression Harness
+
+Use the golden-query harness to measure ranking quality on real provider results.
+
+```bash
+npm run test:relevance
+```
+
+Optional flags:
+
+```bash
+node scripts/relevance-check.js --max-queries 5 --top-n 8 --delay-ms 300
+```
+
+Golden query definitions:
+
+- `tests/relevance/golden-queries.json`
+
+Notes:
+
+- This harness uses live provider API calls (no mock data).
+- It consumes request quota and may incur cost depending on your plan.
+- It exits non-zero when any golden case fails, so it can be used in CI later.
+
 ## Setup Search Provider Keys
 
 ### Option A: Brave Search API (implemented first)

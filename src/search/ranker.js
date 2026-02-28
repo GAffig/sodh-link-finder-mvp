@@ -24,6 +24,7 @@ const PRIORITY_ASSET_QUERY_SUFFIX = "dataset table download csv xlsx";
 
 const LOCATION_SIGNAL_BONUS = 70;
 const MISSING_LOCATION_SIGNAL_PENALTY = 90;
+const CENSUS_WHEN_TOPIC_PENALTY = 190;
 
 const DATA_ASSET_HINTS = [
   "table",
@@ -109,9 +110,40 @@ const TOPIC_DOMAIN_BOOST_RULES = [
   {
     triggerTerms: ["absent", "absence", "attendance", "chronic"],
     domains: ["nces.ed.gov", "tn.gov", "vdh.virginia.gov"],
-    bonus: 240
+    bonus: 420
+  },
+  {
+    triggerTerms: ["incarceration", "incarcerated", "jail", "prison", "offender"],
+    domains: ["ucr.fbi.gov", "urban.org", "tn.gov"],
+    bonus: 430
+  },
+  {
+    triggerTerms: ["drought", "dry", "water"],
+    domains: ["droughtmonitor.unl.edu", "epa.gov", "tn.gov"],
+    bonus: 460
+  },
+  {
+    triggerTerms: ["opportunity", "mobility", "atlas"],
+    domains: ["opportunityinsights.org"],
+    bonus: 560
   }
 ];
+
+const CENSUS_SEED_TERMS = new Set([
+  "income",
+  "household",
+  "poverty",
+  "housing",
+  "rent",
+  "commute",
+  "population",
+  "demographic",
+  "median",
+  "uninsured",
+  "insurance",
+  "acs",
+  "census"
+]);
 
 export async function runSearchPipeline({ query, provider }) {
   const queryContext = buildQueryContext(query);
@@ -120,20 +152,37 @@ export async function runSearchPipeline({ query, provider }) {
   const stageAPriorityResults = [];
   const stageADomainCounts = new Map();
 
-  // Seed Stage A with direct data.census.gov retrieval, but keep hard per-domain caps.
-  for (const seedQuery of buildDataCensusSeedQueries(query)) {
-    const seedRows = await searchQueryAllow422(provider, seedQuery, DATA_CENSUS_SEED_QUERY_COUNT);
-    appendUniquePriorityRows({
-      rows: seedRows,
-      queryContext,
-      seenUrls,
-      target: stageAPriorityResults,
-      domainCounts: stageADomainCounts,
-      maxPerDomain: 2
-    });
+  // Run topic-focused domain seeds first to pull domain-authoritative links for specialized queries.
+  for (const activeRule of queryContext.activeTopicRules) {
+    for (const domain of activeRule.domains) {
+      const domainSeedRows = await searchQueryAllow422(provider, `${query} site:${domain}`, 12);
+      appendUniquePriorityRows({
+        rows: domainSeedRows,
+        queryContext,
+        seenUrls,
+        target: stageAPriorityResults,
+        domainCounts: stageADomainCounts,
+        maxPerDomain: 2
+      });
+    }
+  }
 
-    if (hasEnoughStageAResults(stageAPriorityResults)) {
-      break;
+  // Seed Stage A with direct data.census.gov retrieval only for census-like indicator intents.
+  if (shouldSeedDataCensus(queryContext)) {
+    for (const seedQuery of buildDataCensusSeedQueries(query)) {
+      const seedRows = await searchQueryAllow422(provider, seedQuery, DATA_CENSUS_SEED_QUERY_COUNT);
+      appendUniquePriorityRows({
+        rows: seedRows,
+        queryContext,
+        seenUrls,
+        target: stageAPriorityResults,
+        domainCounts: stageADomainCounts,
+        maxPerDomain: 2
+      });
+
+      if (hasEnoughStageAResults(stageAPriorityResults)) {
+        break;
+      }
     }
   }
 
@@ -368,6 +417,7 @@ function scoreResult(result, queryContext, coreCoverage) {
   }
 
   score += getTopicDomainBoost(queryContext.activeTopicRules, result.domain);
+  score += getTopicMismatchPenalty(queryContext.activeTopicRules, queryContext.queryTerms, result.domain);
 
   return score;
 }
@@ -400,6 +450,14 @@ function buildQueryContext(query) {
       rule.triggerTerms.some((term) => queryTerms.includes(term))
     )
   };
+}
+
+function shouldSeedDataCensus(queryContext) {
+  if (queryContext.activeTopicRules.length > 0 && !queryContext.queryTerms.includes("census")) {
+    return false;
+  }
+
+  return queryContext.queryTerms.some((term) => CENSUS_SEED_TERMS.has(term));
 }
 
 function tokenize(value) {
@@ -476,6 +534,23 @@ function getTopicDomainBoost(activeTopicRules, domain) {
   }
 
   return bonus;
+}
+
+function getTopicMismatchPenalty(activeTopicRules, queryTerms, domain) {
+  if (activeTopicRules.length === 0) {
+    return 0;
+  }
+
+  if (queryTerms.includes("census")) {
+    return 0;
+  }
+
+  const lowerDomain = domain.toLowerCase();
+  if (matchesHost(lowerDomain, "census.gov") || matchesHost(lowerDomain, DATA_CENSUS_HOST)) {
+    return -CENSUS_WHEN_TOPIC_PENALTY;
+  }
+
+  return 0;
 }
 
 function extractDomain(candidateUrl) {

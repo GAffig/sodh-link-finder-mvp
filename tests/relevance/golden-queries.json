@@ -1,0 +1,95 @@
+[
+  {
+    "name": "Income by county (TN)",
+    "query": "Median household income by county Tennessee",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["data.census.gov", "census.gov"],
+    "minPriorityInTopN": 3,
+    "minDistinctDomainsTopN": 3
+  },
+  {
+    "name": "Uninsured rate (TN + VA)",
+    "query": "Uninsured rate by county Tennessee Virginia",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["countyhealthrankings.org", "cdc.gov", "cms.gov", "census.gov"],
+    "minPriorityInTopN": 3,
+    "minDistinctDomainsTopN": 3
+  },
+  {
+    "name": "Chronic absenteeism (TN + VA)",
+    "query": "Chronic absent rate for both TN and VA counties",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["nces.ed.gov", "tn.gov", "vdh.virginia.gov"],
+    "preferredTop1Domains": ["nces.ed.gov", "tn.gov", "vdh.virginia.gov"],
+    "minPriorityInTopN": 3,
+    "minDistinctDomainsTopN": 3,
+    "forbiddenTop1Domains": ["data.census.gov"]
+  },
+  {
+    "name": "Food insecurity",
+    "query": "Food insecurity by county Tennessee Virginia",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["feedingamerica.org", "countyhealthrankings.org", "ers.usda.gov"],
+    "minPriorityInTopN": 3,
+    "minDistinctDomainsTopN": 3
+  },
+  {
+    "name": "Life expectancy",
+    "query": "Life expectancy by county Virginia",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["countyhealthrankings.org", "cdc.gov", "vdh.virginia.gov"],
+    "minPriorityInTopN": 3,
+    "minDistinctDomainsTopN": 3
+  },
+  {
+    "name": "Incarceration rate",
+    "query": "Incarceration rate by county Tennessee",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["ucr.fbi.gov", "urban.org", "tn.gov"],
+    "minPriorityInTopN": 2,
+    "minDistinctDomainsTopN": 3
+  },
+  {
+    "name": "Housing cost burden",
+    "query": "Housing cost burden by county",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["hud.gov", "census.gov", "cnt.org"],
+    "minPriorityInTopN": 2,
+    "minDistinctDomainsTopN": 3
+  },
+  {
+    "name": "Commute time",
+    "query": "Average commute time by county Tennessee",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["transportation.gov", "census.gov", "cnt.org"],
+    "minPriorityInTopN": 2,
+    "minDistinctDomainsTopN": 3
+  },
+  {
+    "name": "Drought monitor",
+    "query": "Drought monitor Tennessee counties",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["droughtmonitor.unl.edu", "epa.gov"],
+    "minPriorityInTopN": 2,
+    "minDistinctDomainsTopN": 2
+  },
+  {
+    "name": "Opportunity Atlas",
+    "query": "Income mobility by county opportunity atlas",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["opportunityinsights.org"],
+    "preferredTop1Domains": ["opportunityinsights.org"],
+    "minPriorityInTopN": 2,
+    "minDistinctDomainsTopN": 2
+  }
+]
