@@ -34,6 +34,7 @@ Status: COMPLETE
 ### Newly Shipped (Latest Cycle)
 
 - [x] Low-credit search controls with deterministic call budgets (`SEARCH_COST_MODE`, `SEARCH_MAX_PROVIDER_CALLS`).
+- [x] Automatic weak-result upgrade from `economy` to `standard` with configurable thresholds.
 - [x] Server-side response cache for repeated queries (`SEARCH_CACHE_TTL_MS`, `SEARCH_CACHE_MAX_ENTRIES`).
 - [x] Search UI visibility for efficiency mode and per-search provider call usage metadata.
 

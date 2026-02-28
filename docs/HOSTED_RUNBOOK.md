@@ -23,6 +23,11 @@ Optional:
 - `PORT` (defaults to `3000`)
 - `SEARCH_COST_MODE` (`economy` default, or `standard`)
 - `SEARCH_MAX_PROVIDER_CALLS` (override per-search call cap)
+- `SEARCH_STANDARD_MAX_PROVIDER_CALLS` (override cap for auto-upgraded `standard` reruns)
+- `SEARCH_AUTO_ESCALATE_STANDARD` (auto-upgrade weak economy results, default `true`)
+- `SEARCH_ESCALATE_MIN_RESULTS` (weak-result threshold, default `8`)
+- `SEARCH_ESCALATE_MIN_PRIORITY_RESULTS` (weak-result threshold, default `3`)
+- `SEARCH_ESCALATE_MIN_DISTINCT_DOMAINS` (weak-result threshold, default `3`)
 - `SEARCH_CACHE_TTL_MS` (server cache TTL in milliseconds)
 - `SEARCH_CACHE_MAX_ENTRIES` (server cache size cap)
 
@@ -35,6 +40,8 @@ Optional:
    - Recommended for cost control:
      - `SEARCH_COST_MODE=economy`
      - `SEARCH_MAX_PROVIDER_CALLS=4`
+     - `SEARCH_AUTO_ESCALATE_STANDARD=true`
+     - `SEARCH_STANDARD_MAX_PROVIDER_CALLS=8`
      - `SEARCH_CACHE_TTL_MS=21600000`
 4. Start command:
    - `npm start`

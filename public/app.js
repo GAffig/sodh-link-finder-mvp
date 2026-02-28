@@ -106,11 +106,13 @@ function renderSearchConfigNote(config) {
   }
 
   const cost = config?.searchCost || {};
+  const escalation = config?.autoEscalation || {};
   const cache = config?.cache || {};
   const mode = String(cost.mode || "economy");
   const limit = Number(cost.providerRequestLimit || 0);
   const cacheEnabled = Boolean(cache.enabled);
   const cacheTtl = Number(cache.ttlMs || 0);
+  const escalationText = escalation.enabled ? "on" : "off";
 
   if (!config?.configured) {
     searchConfigNote.textContent = "Search disabled until provider key is configured.";
@@ -119,7 +121,7 @@ function renderSearchConfigNote(config) {
 
   const limitText = Number.isFinite(limit) && limit > 0 ? String(limit) : "n/a";
   const cacheText = cacheEnabled ? formatDuration(cacheTtl) : "off";
-  searchConfigNote.textContent = `Efficiency mode: ${mode}. Provider call cap/search: ${limitText}. Server cache TTL: ${cacheText}.`;
+  searchConfigNote.textContent = `Efficiency mode: ${mode}. Provider call cap/search: ${limitText}. Auto-upgrade: ${escalationText}. Server cache TTL: ${cacheText}.`;
 }
 
 async function runSearch() {
@@ -172,9 +174,14 @@ async function runSearch() {
     const callLabel = metadata.cacheHit
       ? "cache hit (0 provider calls)"
       : `${metadata.providerRequestCount ?? "?"}/${metadata.providerRequestLimit ?? "?"} provider calls`;
+    const requestedMode = metadata.requestedCostMode || metadata.costMode;
+    const effectiveMode = metadata.effectiveCostMode || metadata.costMode;
+    const modeLabel = requestedMode === effectiveMode
+      ? `mode: ${effectiveMode}.`
+      : `mode: ${requestedMode} -> ${effectiveMode} (auto-upgraded).`;
     const contextParts = [
       `Showing ${payload.results.length} ranked links from ${providerName}.`,
-      metadata.costMode ? `mode: ${metadata.costMode}.` : null,
+      modeLabel,
       `${callLabel}.`
     ].filter(Boolean);
     showResultContext(contextParts.join(" "));

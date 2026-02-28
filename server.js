@@ -19,6 +19,16 @@ loadDotEnv();
 const PORT = Number(process.env.PORT || 3000);
 const CACHE_TTL_MS = parsePositiveInt(process.env.SEARCH_CACHE_TTL_MS, 6 * 60 * 60 * 1000);
 const CACHE_MAX_ENTRIES = parsePositiveInt(process.env.SEARCH_CACHE_MAX_ENTRIES, 200);
+const AUTO_ESCALATE_STANDARD = parseBoolean(process.env.SEARCH_AUTO_ESCALATE_STANDARD, true);
+const ESCALATE_MIN_RESULTS = parsePositiveInt(process.env.SEARCH_ESCALATE_MIN_RESULTS, 8);
+const ESCALATE_MIN_PRIORITY_RESULTS = parsePositiveInt(
+  process.env.SEARCH_ESCALATE_MIN_PRIORITY_RESULTS,
+  3
+);
+const ESCALATE_MIN_DISTINCT_DOMAINS = parsePositiveInt(
+  process.env.SEARCH_ESCALATE_MIN_DISTINCT_DOMAINS,
+  3
+);
 const searchResponseCache = new Map();
 
 const server = http.createServer(async (req, res) => {
@@ -35,6 +45,14 @@ const server = http.createServer(async (req, res) => {
         ...getProviderSelectionStatus(process.env),
         setupSteps: buildSetupSteps(),
         searchCost: costConfig,
+        autoEscalation: {
+          enabled: AUTO_ESCALATE_STANDARD,
+          fromMode: "economy",
+          toMode: "standard",
+          minResults: ESCALATE_MIN_RESULTS,
+          minPriorityResults: ESCALATE_MIN_PRIORITY_RESULTS,
+          minDistinctDomainsTop8: ESCALATE_MIN_DISTINCT_DOMAINS
+        },
         cache: {
           enabled: CACHE_TTL_MS > 0,
           ttlMs: CACHE_TTL_MS,
@@ -66,9 +84,13 @@ server.listen(PORT, () => {
 
 async function handleSearch(req, res) {
   const provider = resolveConfiguredProvider(process.env);
-  const costConfig = getSearchCostConfig({
+  const requestedCostConfig = getSearchCostConfig({
     mode: process.env.SEARCH_COST_MODE,
     maxProviderCalls: process.env.SEARCH_MAX_PROVIDER_CALLS
+  });
+  const standardCostConfig = getSearchCostConfig({
+    mode: "standard",
+    maxProviderCalls: process.env.SEARCH_STANDARD_MAX_PROVIDER_CALLS
   });
 
   if (!provider) {
@@ -95,52 +117,109 @@ async function handleSearch(req, res) {
   const cacheKey = buildSearchCacheKey({
     query,
     providerName: provider.name,
-    costMode: costConfig.mode
+    costMode: requestedCostConfig.mode
   });
   const cachedEntry = getCachedSearch(cacheKey);
   if (cachedEntry) {
+    const cachedMetadata = cachedEntry.metadata || {};
     return respondJson(res, 200, {
       query,
       timestamp: new Date().toISOString(),
       provider: provider.name,
       results: cachedEntry.results,
       metadata: {
-        ...cachedEntry.metadata,
-        costMode: costConfig.mode,
+        ...cachedMetadata,
+        requestedCostMode: cachedMetadata.requestedCostMode || requestedCostConfig.mode,
+        effectiveCostMode:
+          cachedMetadata.effectiveCostMode || cachedMetadata.costMode || requestedCostConfig.mode,
         cacheHit: true,
         providerRequestCount: 0,
-        providerRequestLimit: costConfig.providerRequestLimit
+        providerRequestLimit: cachedMetadata.providerRequestLimit || requestedCostConfig.providerRequestLimit
       }
     });
   }
 
   try {
-    const pipelineOutput = await runSearchPipeline({
+    const initialOutput = await runSearchPipeline({
       query,
       provider,
       options: {
-        costMode: costConfig.mode,
-        maxProviderCalls: costConfig.providerRequestLimit
+        costMode: requestedCostConfig.mode,
+        maxProviderCalls: requestedCostConfig.providerRequestLimit
       }
     });
 
-    const metadata = {
-      ...pipelineOutput.metadata,
-      costMode: costConfig.mode,
-      cacheHit: false
+    const initialMetadata = normalizeSearchMetadata(initialOutput.metadata, requestedCostConfig);
+    let selectedOutput = initialOutput;
+    let selectedMetadata = initialMetadata;
+    let escalationAttempted = false;
+    let escalationTriggered = false;
+    let escalationReason = "";
+    let escalatedMetadata = null;
+
+    if (shouldEscalateSearch({ requestedCostMode: requestedCostConfig.mode, results: initialOutput.results })) {
+      escalationAttempted = true;
+      escalationTriggered = true;
+      escalationReason = "weak_results";
+
+      try {
+        const standardOutput = await runSearchPipeline({
+          query,
+          provider,
+          options: {
+            costMode: "standard",
+            maxProviderCalls: standardCostConfig.providerRequestLimit
+          }
+        });
+
+        escalatedMetadata = normalizeSearchMetadata(standardOutput.metadata, standardCostConfig);
+
+        const initialScore = computeQualityScore(initialOutput.results, initialMetadata);
+        const escalatedScore = computeQualityScore(standardOutput.results, escalatedMetadata);
+
+        if (escalatedScore >= initialScore) {
+          selectedOutput = standardOutput;
+          selectedMetadata = escalatedMetadata;
+        }
+      } catch (escalationError) {
+        escalationReason = "weak_results_escalation_failed";
+        escalationTriggered = false;
+      }
+    }
+
+    const mergedMetadata = {
+      ...selectedMetadata,
+      requestedCostMode: requestedCostConfig.mode,
+      effectiveCostMode: selectedMetadata.costMode,
+      costMode: selectedMetadata.costMode,
+      cacheHit: false,
+      autoEscalationAttempted: escalationAttempted,
+      autoEscalated: escalationTriggered && selectedMetadata.costMode === "standard",
+      autoEscalationReason: escalationReason || null,
+      providerRequestCountInitial: initialMetadata.providerRequestCount,
+      providerRequestLimitInitial: initialMetadata.providerRequestLimit
     };
 
+    if (escalationAttempted && escalatedMetadata) {
+      mergedMetadata.providerRequestCountEscalated = escalatedMetadata.providerRequestCount;
+      mergedMetadata.providerRequestLimitEscalated = escalatedMetadata.providerRequestLimit;
+      mergedMetadata.providerRequestCount =
+        initialMetadata.providerRequestCount + escalatedMetadata.providerRequestCount;
+      mergedMetadata.providerRequestLimit =
+        initialMetadata.providerRequestLimit + escalatedMetadata.providerRequestLimit;
+    }
+
     setCachedSearch(cacheKey, {
-      results: pipelineOutput.results,
-      metadata
+      results: selectedOutput.results,
+      metadata: mergedMetadata
     });
 
     return respondJson(res, 200, {
       query,
       timestamp: new Date().toISOString(),
       provider: provider.name,
-      results: pipelineOutput.results,
-      metadata
+      results: selectedOutput.results,
+      metadata: mergedMetadata
     });
   } catch (error) {
     if (error instanceof ProviderRequestError) {
@@ -217,6 +296,7 @@ function buildSetupSteps() {
     "Create a .env file in the project root.",
     "Add one key: BRAVE_API_KEY, or SERPAPI_KEY, or BING_API_KEY.",
     "Optional cost controls: SEARCH_COST_MODE=economy|standard and SEARCH_MAX_PROVIDER_CALLS=<number>.",
+    "Optional auto-upgrade on weak economy results: SEARCH_AUTO_ESCALATE_STANDARD=true.",
     "Restart the app so environment variables reload.",
     "Run a search again from the Search tab."
   ];
@@ -282,12 +362,75 @@ function loadDotEnv() {
   }
 }
 
+function normalizeSearchMetadata(rawMetadata, costConfig) {
+  const metadata = rawMetadata || {};
+  return {
+    ...metadata,
+    costMode: metadata.costMode || costConfig.mode,
+    providerRequestCount: Number(metadata.providerRequestCount || 0),
+    providerRequestLimit: Number(metadata.providerRequestLimit || costConfig.providerRequestLimit),
+    priorityResultCount: Number(metadata.priorityResultCount || 0),
+    totalResultCount: Number(metadata.totalResultCount || 0)
+  };
+}
+
+function shouldEscalateSearch({ requestedCostMode, results }) {
+  if (!AUTO_ESCALATE_STANDARD || requestedCostMode !== "economy") {
+    return false;
+  }
+
+  const quality = computeSearchQualitySignals(results);
+  return (
+    quality.totalResults < ESCALATE_MIN_RESULTS ||
+    quality.priorityResults < ESCALATE_MIN_PRIORITY_RESULTS ||
+    quality.distinctDomainsTop8 < ESCALATE_MIN_DISTINCT_DOMAINS
+  );
+}
+
+function computeQualityScore(results, metadata) {
+  const quality = computeSearchQualitySignals(results);
+  const topPriorityBonus = results[0]?.isPriority ? 3 : 0;
+
+  return (
+    quality.totalResults * 5 +
+    quality.priorityResults * 7 +
+    quality.distinctDomainsTop8 * 4 +
+    metadata.priorityResultCount * 2 +
+    topPriorityBonus
+  );
+}
+
+function computeSearchQualitySignals(results) {
+  const safeResults = Array.isArray(results) ? results : [];
+  const topSlice = safeResults.slice(0, 8);
+  return {
+    totalResults: safeResults.length,
+    priorityResults: safeResults.filter((row) => Boolean(row?.isPriority)).length,
+    distinctDomainsTop8: new Set(topSlice.map((row) => String(row?.domain || ""))).size
+  };
+}
+
 function parsePositiveInt(value, fallback) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed <= 0) {
     return fallback;
   }
   return Math.floor(parsed);
+}
+
+function parseBoolean(value, fallback) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!normalized) {
+    return fallback;
+  }
+
+  if (["1", "true", "yes", "on"].includes(normalized)) {
+    return true;
+  }
+  if (["0", "false", "no", "off"].includes(normalized)) {
+    return false;
+  }
+  return fallback;
 }
 
 function buildSearchCacheKey({ query, providerName, costMode }) {

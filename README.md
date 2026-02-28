@@ -44,6 +44,11 @@ Exact env vars used:
 - `PORT` (optional, default `3000`)
 - `SEARCH_COST_MODE` (optional: `economy` or `standard`, default `economy`)
 - `SEARCH_MAX_PROVIDER_CALLS` (optional override for per-search provider call limit)
+- `SEARCH_STANDARD_MAX_PROVIDER_CALLS` (optional cap when auto-upgrading to `standard`)
+- `SEARCH_AUTO_ESCALATE_STANDARD` (optional: `true`/`false`, default `true`)
+- `SEARCH_ESCALATE_MIN_RESULTS` (optional weak-result threshold, default `8`)
+- `SEARCH_ESCALATE_MIN_PRIORITY_RESULTS` (optional weak-result threshold, default `3`)
+- `SEARCH_ESCALATE_MIN_DISTINCT_DOMAINS` (optional weak-result threshold, default `3`)
 - `SEARCH_CACHE_TTL_MS` (optional server cache TTL in ms, default `21600000`)
 - `SEARCH_CACHE_MAX_ENTRIES` (optional cache size cap, default `200`)
 
@@ -93,6 +98,8 @@ This repo includes a Render Blueprint file: `render.yaml`.
    - Recommended cost controls:
      - `SEARCH_COST_MODE=economy`
      - `SEARCH_MAX_PROVIDER_CALLS=4`
+     - `SEARCH_AUTO_ESCALATE_STANDARD=true`
+     - `SEARCH_STANDARD_MAX_PROVIDER_CALLS=8`
      - `SEARCH_CACHE_TTL_MS=21600000`
 5. Create Web Service and wait for deploy.
 
@@ -245,6 +252,7 @@ BING_API_KEY=your_bing_key
 - For production, verify current quotas/pricing in each provider dashboard before heavy usage.
 - This app now includes low-credit controls:
   - `SEARCH_COST_MODE=economy` lowers per-search provider calls.
+  - `SEARCH_AUTO_ESCALATE_STANDARD=true` upgrades to `standard` only for weak economy results.
   - `SEARCH_CACHE_TTL_MS` caches repeated queries server-side and avoids repeated provider requests.
 
 ## Not Configured Behavior

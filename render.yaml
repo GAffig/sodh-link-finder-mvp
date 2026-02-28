@@ -19,6 +19,16 @@ services:
         value: economy
       - key: SEARCH_MAX_PROVIDER_CALLS
         value: 4
+      - key: SEARCH_STANDARD_MAX_PROVIDER_CALLS
+        value: 8
+      - key: SEARCH_AUTO_ESCALATE_STANDARD
+        value: true
+      - key: SEARCH_ESCALATE_MIN_RESULTS
+        value: 8
+      - key: SEARCH_ESCALATE_MIN_PRIORITY_RESULTS
+        value: 3
+      - key: SEARCH_ESCALATE_MIN_DISTINCT_DOMAINS
+        value: 3
       - key: SEARCH_CACHE_TTL_MS
         value: 21600000
       - key: SEARCH_CACHE_MAX_ENTRIES
