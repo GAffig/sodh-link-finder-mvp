@@ -101,6 +101,7 @@ Operations docs:
 
 - Hosted deployment runbook: `docs/HOSTED_RUNBOOK.md`
 - Release relevance checklist: `docs/RELEASE_RELEVANCE_CHECKLIST.md`
+- Phase 2 query normalization plan: `docs/PHASE2_QUERY_NORMALIZATION_PLAN.md`
 
 ## CI Quality Gate
 

@@ -27,12 +27,13 @@ Status: COMPLETE
 
 ### Next
 
-- [ ] Phase 2 planning: define optional query normalization rules that do not alter authority ranking.
+- [x] Phase 2 planning: define optional query normalization rules that do not alter authority ranking.
 - [ ] Add baseline update protocol for quarterly recalibration of `tests/relevance/baseline-summary.json`.
 
 ## Phase 2 - Assisted Search (Future)
 
 - [ ] Optional query normalization and typo correction without changing authority ranking rules.
+- [x] Planning spec drafted (`docs/PHASE2_QUERY_NORMALIZATION_PLAN.md`).
 
 ## Phase 3 - Intelligence Layer (Long-Term)
 
