@@ -32,3 +32,7 @@ Run these in UI and confirm top results are source-appropriate:
 
 - [ ] If all checks pass -> approve release.
 - [ ] If any check fails -> block release and tune ranking rules.
+
+## Quarterly Maintenance
+
+- [ ] If this release is in the quarterly review window, run protocol in `docs/BASELINE_UPDATE_PROTOCOL.md`.

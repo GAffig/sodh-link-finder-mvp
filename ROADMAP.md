@@ -28,7 +28,12 @@ Status: COMPLETE
 ### Next
 
 - [x] Phase 2 planning: define optional query normalization rules that do not alter authority ranking.
-- [ ] Add baseline update protocol for quarterly recalibration of `tests/relevance/baseline-summary.json`.
+- [x] Add baseline update protocol for quarterly recalibration of `tests/relevance/baseline-summary.json`.
+
+### Newly Shipped (Latest Cycle)
+
+- [x] Quarterly baseline update script (`scripts/relevance-baseline-update.js`) with dry-run and explicit `--write` mode.
+- [x] Baseline recalibration runbook (`docs/BASELINE_UPDATE_PROTOCOL.md`) and checklist linkage.
 
 ## Phase 2 - Assisted Search (Future)
 

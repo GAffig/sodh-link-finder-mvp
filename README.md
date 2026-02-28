@@ -117,6 +117,18 @@ Run drift comparison against baseline:
 npm run test:relevance:drift -- --report-file artifacts/relevance-report.json --baseline-file tests/relevance/baseline-summary.json
 ```
 
+Preview quarterly baseline refresh (dry-run):
+
+```bash
+npm run test:relevance:baseline:update -- --report-file artifacts/relevance-report.json
+```
+
+Write updated baseline summary:
+
+```bash
+npm run test:relevance:baseline:update -- --report-file artifacts/relevance-report.json --write
+```
+
 Golden query definitions:
 
 - `tests/relevance/golden-queries.json`
@@ -132,6 +144,7 @@ Operations docs:
 
 - Hosted deployment runbook: `docs/HOSTED_RUNBOOK.md`
 - Release relevance checklist: `docs/RELEASE_RELEVANCE_CHECKLIST.md`
+- Quarterly baseline protocol: `docs/BASELINE_UPDATE_PROTOCOL.md`
 - Phase 2 query normalization plan: `docs/PHASE2_QUERY_NORMALIZATION_PLAN.md`
 
 ## CI Quality Gate

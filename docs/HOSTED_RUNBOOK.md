@@ -46,6 +46,10 @@ npm run test:relevance -- --max-queries 5 --delay-ms 250
 
 If either command fails, treat deployment as unhealthy.
 
+## Quarterly Recalibration
+
+Use `docs/BASELINE_UPDATE_PROTOCOL.md` to refresh drift baseline after approved quarterly review.
+
 ## Secret Rotation
 
 1. Generate a new provider key in provider dashboard.
