@@ -1,4 +1,4 @@
-# SoDH / Population Health Link Finder MVP
+# Population Health Evidence Portal (MVP)
 
 Minimal two-tab web app that returns ranked **real** web links for secondary-data references.
 
@@ -115,6 +115,7 @@ If no provider key is configured:
 ## Priority Domains Used for Ranking and Stage A Search
 
 - `cdc.gov`
+- `data.census.gov`
 - `census.gov`
 - `countyhealthrankings.org`
 - `bls.gov`

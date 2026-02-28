@@ -3,14 +3,31 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SoDH Link Finder MVP</title>
+    <title>Population Health Evidence Portal</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
+    <div class="bg-grid" aria-hidden="true"></div>
+    <div class="bg-orb orb-a" aria-hidden="true"></div>
+    <div class="bg-orb orb-b" aria-hidden="true"></div>
+
     <main class="app-shell">
-      <header>
-        <h1>SoDH / Population Health Link Finder</h1>
-        <p class="subtitle">Minimal MVP with real provider search only</p>
+      <header class="hero">
+        <div class="hero-main">
+          <div class="brand-mark" aria-hidden="true">PH</div>
+          <div>
+            <p class="eyebrow">Enterprise Secondary Data Access</p>
+            <h1>Population Health Evidence Portal</h1>
+            <p class="subtitle">
+              Trusted dataset, table, and map retrieval for CHNA and SoDH analysis teams.
+            </p>
+          </div>
+        </div>
+        <div class="hero-pills">
+          <span class="hero-pill">Deterministic Ranking</span>
+          <span class="hero-pill">Priority Source First</span>
+          <span class="hero-pill">Citable Links</span>
+        </div>
       </header>
 
       <nav class="tabs" aria-label="Primary tabs">
@@ -19,14 +36,18 @@
       </nav>
 
       <section id="view-search" class="view active" aria-labelledby="tab-search">
-        <div class="search-controls">
-          <input
-            id="query-input"
-            type="text"
-            placeholder="e.g., Median household income"
-            autocomplete="off"
-          />
-          <button id="search-button" type="button">Search</button>
+        <div class="search-card">
+          <label for="query-input" class="search-label">Indicator or topic</label>
+          <div class="search-controls">
+            <input
+              id="query-input"
+              type="text"
+              placeholder="e.g., Uninsured rate, median household income, life expectancy by county"
+              autocomplete="off"
+            />
+            <button id="search-button" type="button">Find Sources</button>
+          </div>
+          <p class="search-hint">Focus: downloadable datasets, structured tables, and maps from trusted domains.</p>
         </div>
 
         <p id="loading-indicator" class="status hidden">Searching...</p>
@@ -39,9 +60,10 @@
 
       <section id="view-history" class="view" aria-labelledby="tab-history">
         <div class="history-actions">
+          <h2>Saved Searches</h2>
           <button id="clear-history" type="button" class="danger">Clear History</button>
         </div>
-        <div id="history-empty" class="panel">No searches yet.</div>
+        <div id="history-empty" class="panel">No saved searches yet.</div>
         <table id="history-table" class="history-table hidden">
           <thead>
             <tr>

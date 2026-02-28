@@ -1,5 +1,6 @@
 export const PRIORITY_DOMAINS = [
   "cdc.gov",
+  "data.census.gov",
   "census.gov",
   "countyhealthrankings.org",
   "bls.gov",

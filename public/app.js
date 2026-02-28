@@ -127,7 +127,13 @@ async function runSearch() {
     const payload = await response.json();
 
     if (!response.ok) {
-      const message = payload?.error || "Search failed.";
+      let message = payload?.error || "Search failed.";
+      if (payload?.providerStatusCode) {
+        message += ` (provider HTTP ${payload.providerStatusCode})`;
+      }
+      if (payload?.details) {
+        message += ` Details: ${String(payload.details).slice(0, 220)}`;
+      }
       showError(message);
 
       if (payload?.code === "NOT_CONFIGURED") {
@@ -137,7 +143,9 @@ async function runSearch() {
     }
 
     renderResults(payload.results);
-    showResultContext(`Showing ${payload.results.length} results from ${payload.provider}.`);
+    showResultContext(
+      `Showing ${payload.results.length} ranked links from ${String(payload.provider || "").toUpperCase()}.`
+    );
 
     const historyRecord = {
       id: makeId(),
@@ -168,19 +176,29 @@ function renderResults(results) {
     return;
   }
 
-  for (const result of results) {
+  for (const [index, result] of results.entries()) {
     const li = document.createElement("li");
     li.className = "result";
 
-    const badge = result.isPriority ? '<span class="badge">Priority Source</span>' : "";
+    const priorityBadge = result.isPriority ? '<span class="meta-pill priority">Priority Source</span>' : "";
+    const displayDomain = escapeHtml(result.domain || result.url);
+    const openUrl = escapeAttribute(result.url);
 
     li.innerHTML = `
-      <a href="${escapeAttribute(result.url)}" target="_blank" rel="noopener noreferrer">
-        ${escapeHtml(result.title)}
-      </a>
-      ${badge}
-      <div class="url">${escapeHtml(result.domain || result.url)}</div>
+      <div class="result-head">
+        <span class="result-rank">#${index + 1}</span>
+        <div class="result-title-group">
+          <a class="result-title" href="${openUrl}" target="_blank" rel="noopener noreferrer">
+            ${escapeHtml(result.title)}
+          </a>
+          <div class="result-meta">
+            <span class="meta-pill">${displayDomain}</span>
+            ${priorityBadge}
+          </div>
+        </div>
+      </div>
       <p class="snippet">${escapeHtml(result.snippet || "")}</p>
+      <a class="open-link" href="${openUrl}" target="_blank" rel="noopener noreferrer">Open source</a>
     `;
 
     resultsList.appendChild(li);
@@ -209,7 +227,7 @@ function renderHistory() {
       <td>${escapeHtml(item.query)}</td>
       <td>${escapeHtml(formatDate(item.timestamp))}</td>
       <td>${item.results?.length || 0}</td>
-      <td><button type="button" data-id="${escapeAttribute(item.id)}">Open</button></td>
+      <td><button type="button" class="secondary" data-id="${escapeAttribute(item.id)}">Open</button></td>
     `;
 
     const openButton = tr.querySelector("button");
