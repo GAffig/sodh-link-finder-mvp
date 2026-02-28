@@ -21,6 +21,10 @@ At least one provider key is required:
 Optional:
 
 - `PORT` (defaults to `3000`)
+- `SEARCH_COST_MODE` (`economy` default, or `standard`)
+- `SEARCH_MAX_PROVIDER_CALLS` (override per-search call cap)
+- `SEARCH_CACHE_TTL_MS` (server cache TTL in milliseconds)
+- `SEARCH_CACHE_MAX_ENTRIES` (server cache size cap)
 
 ## Deployment Steps
 
@@ -28,6 +32,10 @@ Optional:
 2. Install dependencies:
    - `npm install --no-audit --no-fund`
 3. Configure environment secrets in host platform.
+   - Recommended for cost control:
+     - `SEARCH_COST_MODE=economy`
+     - `SEARCH_MAX_PROVIDER_CALLS=4`
+     - `SEARCH_CACHE_TTL_MS=21600000`
 4. Start command:
    - `npm start`
 5. Verify health manually:

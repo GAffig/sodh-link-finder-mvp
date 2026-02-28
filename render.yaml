@@ -15,3 +15,11 @@ services:
         sync: false
       - key: BING_API_KEY
         sync: false
+      - key: SEARCH_COST_MODE
+        value: economy
+      - key: SEARCH_MAX_PROVIDER_CALLS
+        value: 4
+      - key: SEARCH_CACHE_TTL_MS
+        value: 21600000
+      - key: SEARCH_CACHE_MAX_ENTRIES
+        value: 200

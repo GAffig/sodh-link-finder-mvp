@@ -33,9 +33,9 @@ Status: COMPLETE
 
 ### Newly Shipped (Latest Cycle)
 
-- [x] Quarterly baseline update script (`scripts/relevance-baseline-update.js`) with dry-run and explicit `--write` mode.
-- [x] Baseline recalibration runbook (`docs/BASELINE_UPDATE_PROTOCOL.md`) and checklist linkage.
-- [x] Team analyst prompt pack v1 (`tests/relevance/team-analyst-prompts-v1.json`) with harness support for optional extra case files.
+- [x] Low-credit search controls with deterministic call budgets (`SEARCH_COST_MODE`, `SEARCH_MAX_PROVIDER_CALLS`).
+- [x] Server-side response cache for repeated queries (`SEARCH_CACHE_TTL_MS`, `SEARCH_CACHE_MAX_ENTRIES`).
+- [x] Search UI visibility for efficiency mode and per-search provider call usage metadata.
 
 ## Phase 2 - Assisted Search (Future)
 

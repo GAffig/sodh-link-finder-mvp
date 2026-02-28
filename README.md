@@ -42,6 +42,10 @@ Exact env vars used:
 - `SERPAPI_KEY`
 - `BING_API_KEY`
 - `PORT` (optional, default `3000`)
+- `SEARCH_COST_MODE` (optional: `economy` or `standard`, default `economy`)
+- `SEARCH_MAX_PROVIDER_CALLS` (optional override for per-search provider call limit)
+- `SEARCH_CACHE_TTL_MS` (optional server cache TTL in ms, default `21600000`)
+- `SEARCH_CACHE_MAX_ENTRIES` (optional cache size cap, default `200`)
 
 If no key is present, the app runs in **Not Configured** mode and does not perform any search.
 
@@ -64,7 +68,7 @@ npm start
 
 This repo includes a Render Blueprint file: `render.yaml`.
 
-### Option A: Blueprint (fastest)
+### Option A: Blueprint (fastest, may require paid Render plan)
 
 1. Push latest `master` to GitHub.
 2. In Render, click **New +** -> **Blueprint**.
@@ -86,6 +90,10 @@ This repo includes a Render Blueprint file: `render.yaml`.
    - Start Command: `npm start`
 4. Add environment variable(s):
    - `BRAVE_API_KEY` (preferred), or fallback keys above
+   - Recommended cost controls:
+     - `SEARCH_COST_MODE=economy`
+     - `SEARCH_MAX_PROVIDER_CALLS=4`
+     - `SEARCH_CACHE_TTL_MS=21600000`
 5. Create Web Service and wait for deploy.
 
 After deploy, share the Render URL with teammates.  
@@ -109,6 +117,12 @@ Run extended suite with team analyst prompt pack:
 
 ```bash
 npm run test:relevance:team
+```
+
+Harness defaults to `standard` cost mode for baseline comparability. To run lower-cost checks:
+
+```bash
+npm run test:relevance -- --cost-mode economy --max-provider-calls 4
 ```
 
 Optional flags:
@@ -229,6 +243,9 @@ BING_API_KEY=your_bing_key
 - Free/trial tiers are typically available for initial testing.
 - Expect strict per-minute or monthly quotas on free tiers.
 - For production, verify current quotas/pricing in each provider dashboard before heavy usage.
+- This app now includes low-credit controls:
+  - `SEARCH_COST_MODE=economy` lowers per-search provider calls.
+  - `SEARCH_CACHE_TTL_MS` caches repeated queries server-side and avoids repeated provider requests.
 
 ## Not Configured Behavior
 

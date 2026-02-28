@@ -312,6 +312,11 @@ button.secondary {
   color: var(--muted);
 }
 
+#search-config-note {
+  margin-top: 4px;
+  color: #35566c;
+}
+
 .status {
   margin: 12px 0;
   color: #365062;

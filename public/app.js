@@ -8,6 +8,7 @@ const views = {
 
 const queryInput = document.getElementById("query-input");
 const searchButton = document.getElementById("search-button");
+const searchConfigNote = document.getElementById("search-config-note");
 const loadingIndicator = document.getElementById("loading-indicator");
 const errorPanel = document.getElementById("error-panel");
 const setupPanel = document.getElementById("setup-panel");
@@ -67,6 +68,7 @@ async function loadConfig() {
     const data = await response.json();
     appConfig = data;
     renderSetupPanel(data);
+    renderSearchConfigNote(data);
   } catch (error) {
     appConfig = { configured: false };
     showError(`Failed to load app configuration: ${String(error)}`);
@@ -96,6 +98,28 @@ SERPAPI_KEY=your_key_here
 BING_API_KEY=your_key_here</pre>
   `;
   setupPanel.classList.remove("hidden");
+}
+
+function renderSearchConfigNote(config) {
+  if (!searchConfigNote) {
+    return;
+  }
+
+  const cost = config?.searchCost || {};
+  const cache = config?.cache || {};
+  const mode = String(cost.mode || "economy");
+  const limit = Number(cost.providerRequestLimit || 0);
+  const cacheEnabled = Boolean(cache.enabled);
+  const cacheTtl = Number(cache.ttlMs || 0);
+
+  if (!config?.configured) {
+    searchConfigNote.textContent = "Search disabled until provider key is configured.";
+    return;
+  }
+
+  const limitText = Number.isFinite(limit) && limit > 0 ? String(limit) : "n/a";
+  const cacheText = cacheEnabled ? formatDuration(cacheTtl) : "off";
+  searchConfigNote.textContent = `Efficiency mode: ${mode}. Provider call cap/search: ${limitText}. Server cache TTL: ${cacheText}.`;
 }
 
 async function runSearch() {
@@ -143,9 +167,17 @@ async function runSearch() {
     }
 
     renderResults(payload.results);
-    showResultContext(
-      `Showing ${payload.results.length} ranked links from ${String(payload.provider || "").toUpperCase()}.`
-    );
+    const metadata = payload?.metadata || {};
+    const providerName = String(payload.provider || "").toUpperCase();
+    const callLabel = metadata.cacheHit
+      ? "cache hit (0 provider calls)"
+      : `${metadata.providerRequestCount ?? "?"}/${metadata.providerRequestLimit ?? "?"} provider calls`;
+    const contextParts = [
+      `Showing ${payload.results.length} ranked links from ${providerName}.`,
+      metadata.costMode ? `mode: ${metadata.costMode}.` : null,
+      `${callLabel}.`
+    ].filter(Boolean);
+    showResultContext(contextParts.join(" "));
 
     const historyRecord = {
       id: makeId(),
@@ -299,6 +331,21 @@ function formatDate(isoTimestamp) {
     return isoTimestamp;
   }
   return date.toLocaleString();
+}
+
+function formatDuration(ms) {
+  const totalMs = Number(ms);
+  if (!Number.isFinite(totalMs) || totalMs <= 0) {
+    return "off";
+  }
+
+  const totalMinutes = Math.round(totalMs / 60000);
+  if (totalMinutes < 60) {
+    return `${totalMinutes}m`;
+  }
+
+  const hours = Math.round(totalMinutes / 60);
+  return `${hours}h`;
 }
 
 function makeId() {

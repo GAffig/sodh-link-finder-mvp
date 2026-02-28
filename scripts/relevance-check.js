@@ -47,11 +47,17 @@ async function main() {
   const topNDefault = toPositiveInt(getArg(args, ["top-n", "topN"]), 8);
   const delayMs = toPositiveInt(getArg(args, ["delay-ms", "delayMs"]), 250);
   const reportFile = getArg(args, ["report-file", "reportFile"]);
+  const costMode = getArg(args, ["cost-mode", "costMode"]) || process.env.SEARCH_COST_MODE || "standard";
+  const maxProviderCalls = getArg(args, ["max-provider-calls", "maxProviderCalls"]);
   const runStartedAt = Date.now();
 
   const selectedCases = cases.slice(0, maxQueries);
 
   console.log(`Provider: ${provider.name}`);
+  console.log(`Cost mode: ${costMode}`);
+  if (maxProviderCalls) {
+    console.log(`Provider call limit override: ${maxProviderCalls}`);
+  }
   console.log(`Golden file: ${goldenFile}`);
   if (extraFiles.length > 0) {
     console.log(`Extra files: ${extraFiles.join(", ")}`);
@@ -72,7 +78,11 @@ async function main() {
     try {
       const pipelineOutput = await runSearchPipeline({
         query: testCase.query,
-        provider
+        provider,
+        options: {
+          costMode,
+          maxProviderCalls
+        }
       });
 
       const elapsedMs = Date.now() - startedAt;
@@ -145,6 +155,8 @@ async function main() {
   const passedCount = results.length - failed.length;
   const report = buildRunReport({
     provider: provider.name,
+    costMode,
+    maxProviderCalls,
     goldenFile,
     inputFiles,
     startedAtMs: runStartedAt,
@@ -294,6 +306,8 @@ function printHelp() {
   console.log("  --top-n <number>      Default top-N window (default: 8)");
   console.log("  --max-queries <n>     Run only first n cases");
   console.log("  --delay-ms <number>   Pause between queries in milliseconds (default: 250)");
+  console.log("  --cost-mode <mode>    Search cost mode for harness run (default: standard)");
+  console.log("  --max-provider-calls <n> Override provider call cap for each query");
   console.log("  --report-file <path>  Write JSON report file for benchmark/drift tracking");
   console.log("  --validate-only       Validate query files only (no provider calls)");
   console.log("  --help                Show this help");
@@ -414,7 +428,17 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function buildRunReport({ provider, goldenFile, inputFiles, startedAtMs, results, passedCount, failedCount }) {
+function buildRunReport({
+  provider,
+  costMode,
+  maxProviderCalls,
+  goldenFile,
+  inputFiles,
+  startedAtMs,
+  results,
+  passedCount,
+  failedCount
+}) {
   const durationMs = Date.now() - startedAtMs;
   const caseCount = results.length;
   const passRate = caseCount === 0 ? 0 : passedCount / caseCount;
@@ -422,6 +446,8 @@ function buildRunReport({ provider, goldenFile, inputFiles, startedAtMs, results
   return {
     generatedAt: new Date().toISOString(),
     provider,
+    costMode,
+    maxProviderCalls: maxProviderCalls ? Number(maxProviderCalls) : null,
     goldenFile,
     inputFiles,
     caseCount,

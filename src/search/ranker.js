@@ -1,17 +1,54 @@
 import { PRIORITY_DOMAINS } from "./providers.js";
 
-const MAX_PRIORITY_RESULTS = 10;
-const MIN_GOOD_RESULTS = 8;
-const TARGET_RESULT_COUNT = 12;
-const ABSOLUTE_MAX_RESULTS = 15;
-
-const STAGE_A_DOMAIN_BATCH_SIZE = 4;
-const STAGE_A_BATCH_RESULT_COUNT = 20;
-const STAGE_A_DOMAIN_RESULT_COUNT = 10;
-const STAGE_A_BUFFER_LIMIT = 24;
-const STAGE_A_MAX_RESULTS_PER_DOMAIN = 3;
-const MIN_STAGE_A_DIVERSE_DOMAINS = 4;
-const MAX_RESULTS_PER_DOMAIN = 3;
+const DEFAULT_SEARCH_COST_MODE = "economy";
+const SEARCH_COST_MODES = {
+  economy: {
+    mode: "economy",
+    maxProviderCalls: 4,
+    maxTopicSeedCalls: 2,
+    maxTopicSeedDomainsPerRule: 2,
+    topicSeedResultCount: 10,
+    maxDataCensusSeedCalls: 1,
+    dataCensusSeedResultCount: 8,
+    stageADomainBatchSize: 6,
+    stageABatchLimit: 2,
+    stageABatchResultCount: 12,
+    stageADomainResultCount: 8,
+    allowStageADomainFallbackOn422: false,
+    stageABufferLimit: 16,
+    stageAMaxResultsPerDomain: 2,
+    maxPriorityResults: 8,
+    minStageADiverseDomains: 3,
+    minGoodResults: 8,
+    fallbackResultCount: 20,
+    targetResultCount: 10,
+    absoluteMaxResults: 12,
+    maxResultsPerDomain: 2
+  },
+  standard: {
+    mode: "standard",
+    maxProviderCalls: 8,
+    maxTopicSeedCalls: 6,
+    maxTopicSeedDomainsPerRule: 3,
+    topicSeedResultCount: 12,
+    maxDataCensusSeedCalls: 2,
+    dataCensusSeedResultCount: 12,
+    stageADomainBatchSize: 4,
+    stageABatchLimit: 6,
+    stageABatchResultCount: 20,
+    stageADomainResultCount: 10,
+    allowStageADomainFallbackOn422: true,
+    stageABufferLimit: 24,
+    stageAMaxResultsPerDomain: 3,
+    maxPriorityResults: 10,
+    minStageADiverseDomains: 4,
+    minGoodResults: 8,
+    fallbackResultCount: 50,
+    targetResultCount: 12,
+    absoluteMaxResults: 15,
+    maxResultsPerDomain: 3
+  }
+};
 
 const DATA_CENSUS_HOST = "data.census.gov";
 const DATA_CENSUS_BONUS = 160;
@@ -19,7 +56,6 @@ const DATA_ASSET_HINT_BONUS = 90;
 const DATA_FILE_EXTENSION_BONUS = 140;
 const DATA_MAP_HINT_BONUS = 45;
 const NON_DATA_HINT_PENALTY = 45;
-const DATA_CENSUS_SEED_QUERY_COUNT = 12;
 const PRIORITY_ASSET_QUERY_SUFFIX = "dataset table download csv xlsx";
 
 const LOCATION_SIGNAL_BONUS = 70;
@@ -160,44 +196,99 @@ const CENSUS_SEED_TERMS = new Set([
   "census"
 ]);
 
-export async function runSearchPipeline({ query, provider }) {
+export function resolveSearchCostMode(candidate) {
+  const normalized = String(candidate || "").trim().toLowerCase();
+  if (normalized in SEARCH_COST_MODES) {
+    return normalized;
+  }
+  return DEFAULT_SEARCH_COST_MODE;
+}
+
+export function getSearchCostConfig({ mode, maxProviderCalls } = {}) {
+  const profile = resolveSearchCostProfile(mode);
+  const limit = normalizeMaxProviderCalls(maxProviderCalls, profile.maxProviderCalls);
+
+  return {
+    mode: profile.mode,
+    defaultMode: DEFAULT_SEARCH_COST_MODE,
+    modeOptions: Object.keys(SEARCH_COST_MODES),
+    providerRequestLimit: limit
+  };
+}
+
+export async function runSearchPipeline({ query, provider, options = {} }) {
   const queryContext = buildQueryContext(query);
+  const costProfile = resolveSearchCostProfile(options.costMode);
+  const requestBudget = createRequestBudget(costProfile, options.maxProviderCalls);
 
   const seenUrls = new Set();
   const stageAPriorityResults = [];
   const stageADomainCounts = new Map();
 
-  // Run topic-focused domain seeds first to pull domain-authoritative links for specialized queries.
+  let topicSeedCalls = 0;
   for (const activeRule of queryContext.activeTopicRules) {
-    for (const domain of activeRule.domains) {
+    const limitedDomains = activeRule.domains.slice(0, costProfile.maxTopicSeedDomainsPerRule);
+    for (const domain of limitedDomains) {
       for (const seedQuery of buildTopicSeedQueries(queryContext, activeRule, domain, query)) {
-        const domainSeedRows = await searchQueryAllow422(provider, seedQuery, 12);
+        if (topicSeedCalls >= costProfile.maxTopicSeedCalls || requestBudget.remaining <= 1) {
+          break;
+        }
+
+        const domainSeedRows = await searchQueryAllow422({
+          provider,
+          query: seedQuery,
+          count: costProfile.topicSeedResultCount,
+          requestBudget
+        });
+
+        topicSeedCalls += 1;
         appendUniquePriorityRows({
           rows: domainSeedRows,
           queryContext,
           seenUrls,
           target: stageAPriorityResults,
           domainCounts: stageADomainCounts,
-          maxPerDomain: 2
+          maxPerDomain: 2,
+          bufferLimit: costProfile.stageABufferLimit
         });
       }
+
+      if (topicSeedCalls >= costProfile.maxTopicSeedCalls || requestBudget.remaining <= 1) {
+        break;
+      }
+    }
+
+    if (topicSeedCalls >= costProfile.maxTopicSeedCalls || requestBudget.remaining <= 1) {
+      break;
     }
   }
 
-  // Seed Stage A with direct data.census.gov retrieval only for census-like indicator intents.
   if (shouldSeedDataCensus(queryContext)) {
+    let dataSeedCalls = 0;
     for (const seedQuery of buildDataCensusSeedQueries(query)) {
-      const seedRows = await searchQueryAllow422(provider, seedQuery, DATA_CENSUS_SEED_QUERY_COUNT);
+      if (dataSeedCalls >= costProfile.maxDataCensusSeedCalls || requestBudget.remaining <= 1) {
+        break;
+      }
+
+      const seedRows = await searchQueryAllow422({
+        provider,
+        query: seedQuery,
+        count: costProfile.dataCensusSeedResultCount,
+        requestBudget
+      });
+
+      dataSeedCalls += 1;
       appendUniquePriorityRows({
         rows: seedRows,
         queryContext,
         seenUrls,
         target: stageAPriorityResults,
         domainCounts: stageADomainCounts,
-        maxPerDomain: 2
+        maxPerDomain: 2,
+        bufferLimit: costProfile.stageABufferLimit
       });
 
-      if (hasEnoughStageAResults(stageAPriorityResults)) {
+      if (hasEnoughStageAResults(stageAPriorityResults, costProfile)) {
         break;
       }
     }
@@ -205,11 +296,22 @@ export async function runSearchPipeline({ query, provider }) {
 
   const stageABatches = chunkArray(
     PRIORITY_DOMAINS.filter((domain) => domain !== DATA_CENSUS_HOST),
-    STAGE_A_DOMAIN_BATCH_SIZE
+    costProfile.stageADomainBatchSize
   );
 
-  for (const domainBatch of stageABatches) {
-    const stageARaw = await searchPriorityBatch({ query, domainBatch, provider });
+  for (let index = 0; index < stageABatches.length && index < costProfile.stageABatchLimit; index += 1) {
+    if (requestBudget.remaining <= 1) {
+      break;
+    }
+
+    const domainBatch = stageABatches[index];
+    const stageARaw = await searchPriorityBatch({
+      query,
+      domainBatch,
+      provider,
+      requestBudget,
+      costProfile
+    });
 
     appendUniquePriorityRows({
       rows: stageARaw,
@@ -217,19 +319,25 @@ export async function runSearchPipeline({ query, provider }) {
       seenUrls,
       target: stageAPriorityResults,
       domainCounts: stageADomainCounts,
-      maxPerDomain: STAGE_A_MAX_RESULTS_PER_DOMAIN
+      maxPerDomain: costProfile.stageAMaxResultsPerDomain,
+      bufferLimit: costProfile.stageABufferLimit
     });
 
-    if (hasEnoughStageAResults(stageAPriorityResults)) {
+    if (hasEnoughStageAResults(stageAPriorityResults, costProfile)) {
       break;
     }
   }
 
   const combined = [...stageAPriorityResults];
-  const shouldRunFallback = stageAPriorityResults.length < MIN_GOOD_RESULTS;
+  const shouldRunFallback = stageAPriorityResults.length < costProfile.minGoodResults;
 
-  if (shouldRunFallback) {
-    const stageBRaw = await provider.searchWeb(query, { count: 50 });
+  if (shouldRunFallback && requestBudget.remaining > 0) {
+    const stageBRaw = await searchWithBudget({
+      provider,
+      query,
+      count: costProfile.fallbackResultCount,
+      requestBudget
+    });
 
     for (const row of stageBRaw) {
       const normalized = normalizeRow(row, queryContext);
@@ -244,14 +352,18 @@ export async function runSearchPipeline({ query, provider }) {
       seenUrls.add(normalized.urlKey);
       combined.push(normalized);
 
-      if (combined.length >= TARGET_RESULT_COUNT * 2) {
+      if (combined.length >= costProfile.targetResultCount * 2) {
         break;
       }
     }
   }
 
   const sorted = combined.sort(compareByScore);
-  const balanced = limitResultsPerDomain(sorted, MAX_RESULTS_PER_DOMAIN, ABSOLUTE_MAX_RESULTS);
+  const balanced = limitResultsPerDomain(
+    sorted,
+    costProfile.maxResultsPerDomain,
+    costProfile.absoluteMaxResults
+  );
 
   return {
     results: balanced.map((item) => ({
@@ -264,16 +376,57 @@ export async function runSearchPipeline({ query, provider }) {
     metadata: {
       fallbackUsed: shouldRunFallback,
       priorityResultCount: stageAPriorityResults.length,
-      totalResultCount: balanced.length
+      totalResultCount: balanced.length,
+      costMode: costProfile.mode,
+      providerRequestCount: requestBudget.used,
+      providerRequestLimit: requestBudget.limit,
+      providerBudgetExhausted: requestBudget.exhausted
     }
   };
 }
 
-async function searchPriorityBatch({ query, domainBatch, provider }) {
+function resolveSearchCostProfile(mode) {
+  return SEARCH_COST_MODES[resolveSearchCostMode(mode)];
+}
+
+function createRequestBudget(costProfile, maxProviderCalls) {
+  const limit = normalizeMaxProviderCalls(maxProviderCalls, costProfile.maxProviderCalls);
+  const budget = {
+    limit,
+    used: 0,
+    exhausted: false
+  };
+
+  Object.defineProperty(budget, "remaining", {
+    enumerable: true,
+    configurable: false,
+    get() {
+      return Math.max(limit - budget.used, 0);
+    }
+  });
+
+  return budget;
+}
+
+function normalizeMaxProviderCalls(candidate, fallback) {
+  const parsed = Number(candidate);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallback;
+  }
+
+  return Math.floor(parsed);
+}
+
+async function searchPriorityBatch({ query, domainBatch, provider, requestBudget, costProfile }) {
   const batchQuery = buildDomainBatchQuery(query, domainBatch);
 
   try {
-    return await provider.searchWeb(batchQuery, { count: STAGE_A_BATCH_RESULT_COUNT });
+    return await searchWithBudget({
+      provider,
+      query: batchQuery,
+      count: costProfile.stageABatchResultCount,
+      requestBudget
+    });
   } catch (error) {
     // Some providers reject long/complex OR site filters with 422.
     if (Number(error?.statusCode) !== 422) {
@@ -281,11 +434,24 @@ async function searchPriorityBatch({ query, domainBatch, provider }) {
     }
   }
 
+  if (!costProfile.allowStageADomainFallbackOn422) {
+    return [];
+  }
+
   const merged = [];
   for (const domain of domainBatch) {
     try {
+      if (requestBudget.remaining <= 1) {
+        break;
+      }
+
       const domainQuery = `${query} site:${domain}`;
-      const rows = await provider.searchWeb(domainQuery, { count: STAGE_A_DOMAIN_RESULT_COUNT });
+      const rows = await searchWithBudget({
+        provider,
+        query: domainQuery,
+        count: costProfile.stageADomainResultCount,
+        requestBudget
+      });
       merged.push(...rows);
     } catch (error) {
       if (Number(error?.statusCode) !== 422) {
@@ -297,15 +463,25 @@ async function searchPriorityBatch({ query, domainBatch, provider }) {
   return merged;
 }
 
-async function searchQueryAllow422(provider, query, count) {
+async function searchQueryAllow422({ provider, query, count, requestBudget }) {
   try {
-    return await provider.searchWeb(query, { count });
+    return await searchWithBudget({ provider, query, count, requestBudget });
   } catch (error) {
     if (Number(error?.statusCode) === 422) {
       return [];
     }
     throw error;
   }
+}
+
+async function searchWithBudget({ provider, query, count, requestBudget }) {
+  if (requestBudget.remaining <= 0) {
+    requestBudget.exhausted = true;
+    return [];
+  }
+
+  requestBudget.used += 1;
+  return provider.searchWeb(query, { count });
 }
 
 function normalizeRow(row, queryContext) {
@@ -354,9 +530,17 @@ function normalizeRow(row, queryContext) {
   };
 }
 
-function appendUniquePriorityRows({ rows, queryContext, seenUrls, target, domainCounts, maxPerDomain }) {
+function appendUniquePriorityRows({
+  rows,
+  queryContext,
+  seenUrls,
+  target,
+  domainCounts,
+  maxPerDomain,
+  bufferLimit
+}) {
   for (const row of rows) {
-    if (target.length >= STAGE_A_BUFFER_LIMIT) {
+    if (target.length >= bufferLimit) {
       break;
     }
 
@@ -650,10 +834,10 @@ function buildTopicSeedQueries(queryContext, rule, domain, originalQuery) {
   return [...new Set(queries)];
 }
 
-function hasEnoughStageAResults(stageAPriorityResults) {
+function hasEnoughStageAResults(stageAPriorityResults, costProfile) {
   return (
-    stageAPriorityResults.length >= MAX_PRIORITY_RESULTS &&
-    countDistinctDomains(stageAPriorityResults) >= MIN_STAGE_A_DIVERSE_DOMAINS
+    stageAPriorityResults.length >= costProfile.maxPriorityResults &&
+    countDistinctDomains(stageAPriorityResults) >= costProfile.minStageADiverseDomains
   );
 }
 
