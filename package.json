@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
+    "test:syntax": "node --check server.js && node --check src/search/providers.js && node --check src/search/ranker.js && node --check public/app.js && node --check scripts/relevance-check.js",
     "test:relevance": "node scripts/relevance-check.js"
   },
   "engines": {

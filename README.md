@@ -84,6 +84,27 @@ Notes:
 - It consumes request quota and may incur cost depending on your plan.
 - It exits non-zero when any golden case fails, so it can be used in CI later.
 
+## CI Quality Gate
+
+GitHub Actions workflow:
+
+- `.github/workflows/quality-gate.yml`
+
+What it does:
+
+- Runs syntax checks on every push/PR to `master`.
+- Runs live relevance harness on `push`, scheduled run, or manual dispatch when repository secret `BRAVE_API_KEY` is configured.
+
+Repository setup for live harness in CI:
+
+1. Open repository settings -> Secrets and variables -> Actions.
+2. Add a secret named `BRAVE_API_KEY`.
+3. Trigger the workflow manually from Actions tab (`Quality Gate`) or push to `master`.
+
+Roadmap tracking:
+
+- See `ROADMAP.md` for current execution status and next items.
+
 ## Setup Search Provider Keys
 
 ### Option A: Brave Search API (implemented first)
