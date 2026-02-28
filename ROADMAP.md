@@ -23,17 +23,19 @@ Status: COMPLETE
 
 ### In Progress
 
-- [ ] Add team-specific prompts from real analyst workflows to keep evolving the 28-case suite.
+- [x] Add team-specific prompts from real analyst workflows to keep evolving the 28-case suite.
 
 ### Next
 
 - [x] Phase 2 planning: define optional query normalization rules that do not alter authority ranking.
 - [x] Add baseline update protocol for quarterly recalibration of `tests/relevance/baseline-summary.json`.
+- [ ] Run and baseline the extended team prompt suite (`tests/relevance/team-analyst-prompts-v1.json`) after provider quota reset.
 
 ### Newly Shipped (Latest Cycle)
 
 - [x] Quarterly baseline update script (`scripts/relevance-baseline-update.js`) with dry-run and explicit `--write` mode.
 - [x] Baseline recalibration runbook (`docs/BASELINE_UPDATE_PROTOCOL.md`) and checklist linkage.
+- [x] Team analyst prompt pack v1 (`tests/relevance/team-analyst-prompts-v1.json`) with harness support for optional extra case files.
 
 ## Phase 2 - Assisted Search (Future)
 

@@ -22,6 +22,18 @@ async function main() {
     return;
   }
 
+  const goldenFile = resolvePath(getArg(args, ["file"]) || DEFAULT_GOLDEN_FILE);
+  const extraFiles = parseCsv(getArg(args, ["extra-files", "extraFiles"])).map(resolvePath);
+  const inputFiles = [goldenFile, ...extraFiles];
+  const cases = loadCases(inputFiles);
+
+  if (getArg(args, ["validate-only", "validateOnly"]) === "true") {
+    console.log("Relevance case validation passed.");
+    console.log(`Files: ${inputFiles.join(", ")}`);
+    console.log(`Cases: ${cases.length}`);
+    process.exit(0);
+  }
+
   loadDotEnv(path.join(ROOT_DIR, ".env"));
 
   const provider = resolveConfiguredProvider(process.env);
@@ -31,8 +43,6 @@ async function main() {
     process.exit(2);
   }
 
-  const goldenFile = args.file || DEFAULT_GOLDEN_FILE;
-  const cases = loadCases(goldenFile);
   const maxQueries = toPositiveInt(getArg(args, ["max-queries", "maxQueries"]), cases.length);
   const topNDefault = toPositiveInt(getArg(args, ["top-n", "topN"]), 8);
   const delayMs = toPositiveInt(getArg(args, ["delay-ms", "delayMs"]), 250);
@@ -43,6 +53,9 @@ async function main() {
 
   console.log(`Provider: ${provider.name}`);
   console.log(`Golden file: ${goldenFile}`);
+  if (extraFiles.length > 0) {
+    console.log(`Extra files: ${extraFiles.join(", ")}`);
+  }
   console.log(`Cases: ${selectedCases.length}`);
   console.log("");
 
@@ -133,6 +146,7 @@ async function main() {
   const report = buildRunReport({
     provider: provider.name,
     goldenFile,
+    inputFiles,
     startedAtMs: runStartedAt,
     results,
     passedCount,
@@ -276,31 +290,49 @@ function printHelp() {
   console.log("");
   console.log("Options:");
   console.log("  --file <path>         Path to golden query JSON file");
+  console.log("  --extra-files <csv>   Comma-separated additional query files");
   console.log("  --top-n <number>      Default top-N window (default: 8)");
   console.log("  --max-queries <n>     Run only first n cases");
   console.log("  --delay-ms <number>   Pause between queries in milliseconds (default: 250)");
   console.log("  --report-file <path>  Write JSON report file for benchmark/drift tracking");
+  console.log("  --validate-only       Validate query files only (no provider calls)");
   console.log("  --help                Show this help");
 }
 
-function loadCases(filePath) {
-  const raw = readFileSync(filePath, "utf8");
-  const parsed = JSON.parse(raw);
+function loadCases(filePaths) {
+  const combined = [];
+  const names = new Set();
 
-  if (!Array.isArray(parsed) || parsed.length === 0) {
-    throw new Error("Golden file must be a non-empty JSON array.");
+  for (const filePath of filePaths) {
+    const raw = readFileSync(filePath, "utf8");
+    const parsed = JSON.parse(raw);
+
+    if (!Array.isArray(parsed)) {
+      throw new Error(`Case file '${filePath}' must be a JSON array.`);
+    }
+
+    for (const [index, item] of parsed.entries()) {
+      if (typeof item?.name !== "string" || !item.name.trim()) {
+        throw new Error(`Case ${index + 1} in '${filePath}' missing valid 'name'.`);
+      }
+      if (typeof item?.query !== "string" || !item.query.trim()) {
+        throw new Error(`Case ${index + 1} in '${filePath}' missing valid 'query'.`);
+      }
+
+      const normalizedName = item.name.trim();
+      if (names.has(normalizedName)) {
+        throw new Error(`Duplicate case name '${normalizedName}' across input files.`);
+      }
+      names.add(normalizedName);
+      combined.push(item);
+    }
   }
 
-  for (const [index, item] of parsed.entries()) {
-    if (typeof item?.name !== "string" || !item.name.trim()) {
-      throw new Error(`Case ${index + 1} missing valid 'name'.`);
-    }
-    if (typeof item?.query !== "string" || !item.query.trim()) {
-      throw new Error(`Case ${index + 1} missing valid 'query'.`);
-    }
+  if (combined.length === 0) {
+    throw new Error("At least one case is required across input files.");
   }
 
-  return parsed;
+  return combined;
 }
 
 function domainSeen(domains, expectedDomain) {
@@ -331,6 +363,24 @@ function getArg(args, keys) {
     }
   }
   return undefined;
+}
+
+function parseCsv(value) {
+  if (typeof value !== "string" || !value.trim()) {
+    return [];
+  }
+
+  return value
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function resolvePath(candidatePath) {
+  if (path.isAbsolute(candidatePath)) {
+    return candidatePath;
+  }
+  return path.join(ROOT_DIR, candidatePath);
 }
 
 function loadDotEnv(envPath) {
@@ -364,7 +414,7 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function buildRunReport({ provider, goldenFile, startedAtMs, results, passedCount, failedCount }) {
+function buildRunReport({ provider, goldenFile, inputFiles, startedAtMs, results, passedCount, failedCount }) {
   const durationMs = Date.now() - startedAtMs;
   const caseCount = results.length;
   const passRate = caseCount === 0 ? 0 : passedCount / caseCount;
@@ -373,6 +423,7 @@ function buildRunReport({ provider, goldenFile, startedAtMs, results, passedCoun
     generatedAt: new Date().toISOString(),
     provider,
     goldenFile,
+    inputFiles,
     caseCount,
     passedCount,
     failedCount,

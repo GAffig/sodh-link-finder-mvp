@@ -6,6 +6,7 @@ Use this checklist before production release.
 
 - [ ] `npm run test:syntax` passes.
 - [ ] `npm run test:relevance` passes.
+- [ ] `npm run test:relevance:validate` passes.
 - [ ] No regression in chronic absenteeism query (`TN` + `VA`).
 - [ ] No regression in incarceration query.
 - [ ] No regression in drought monitor query.

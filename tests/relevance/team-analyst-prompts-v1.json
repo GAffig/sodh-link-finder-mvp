@@ -1,0 +1,92 @@
+[
+  {
+    "name": "Workflow - uninsured adults",
+    "query": "Insurance uninsured adult by county Tennessee Virginia",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["countyhealthrankings.org", "census.gov", "cdc.gov", "cms.gov"],
+    "minPriorityInTopN": 3,
+    "minDistinctDomainsTopN": 3
+  },
+  {
+    "name": "Workflow - behavioral health providers",
+    "query": "Behavioral health providers by county Tennessee Virginia",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["countyhealthrankings.org", "cdc.gov", "hhs.gov"],
+    "minPriorityInTopN": 2,
+    "minDistinctDomainsTopN": 3
+  },
+  {
+    "name": "Workflow - primary care physicians",
+    "query": "Primary care physicians by county Tennessee Virginia",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["countyhealthrankings.org", "cdc.gov", "hhs.gov", "tn.gov"],
+    "minPriorityInTopN": 2,
+    "minDistinctDomainsTopN": 3
+  },
+  {
+    "name": "Workflow - teen birth rate",
+    "query": "Teen birth rate by county Tennessee Virginia",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["cdc.gov", "hhs.gov", "tn.gov", "vdh.virginia.gov"],
+    "minPriorityInTopN": 2,
+    "minDistinctDomainsTopN": 3
+  },
+  {
+    "name": "Workflow - opioid overdose deaths",
+    "query": "Opioid overdose deaths by county Tennessee Virginia",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["cdc.gov", "hhs.gov", "tn.gov", "vdh.virginia.gov"],
+    "minPriorityInTopN": 2,
+    "minDistinctDomainsTopN": 3
+  },
+  {
+    "name": "Workflow - broadband access",
+    "query": "Broadband access by county Tennessee Virginia",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["census.gov", "hhs.gov", "tn.gov"],
+    "minPriorityInTopN": 2,
+    "minDistinctDomainsTopN": 3
+  },
+  {
+    "name": "Workflow - preventable hospital stays",
+    "query": "Preventable hospital stays by county Tennessee",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["countyhealthrankings.org", "cms.gov", "hhs.gov", "tn.gov"],
+    "minPriorityInTopN": 2,
+    "minDistinctDomainsTopN": 3
+  },
+  {
+    "name": "Workflow - infant mortality",
+    "query": "Infant mortality by county Tennessee Virginia",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["cdc.gov", "hhs.gov", "tn.gov", "vdh.virginia.gov"],
+    "minPriorityInTopN": 2,
+    "minDistinctDomainsTopN": 3
+  },
+  {
+    "name": "Workflow - diabetes prevalence",
+    "query": "Diabetes prevalence by county Tennessee Virginia",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["cdc.gov", "countyhealthrankings.org", "tn.gov"],
+    "minPriorityInTopN": 2,
+    "minDistinctDomainsTopN": 3
+  },
+  {
+    "name": "Workflow - child care access",
+    "query": "Child care access by county Tennessee Virginia",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["hhs.gov", "acf.hhs.gov", "tn.gov"],
+    "minPriorityInTopN": 2,
+    "minDistinctDomainsTopN": 3
+  }
+]

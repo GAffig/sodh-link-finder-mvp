@@ -99,6 +99,18 @@ Use the golden-query harness to measure ranking quality on real provider results
 npm run test:relevance
 ```
 
+Validate query files only (no provider calls):
+
+```bash
+npm run test:relevance:validate
+```
+
+Run extended suite with team analyst prompt pack:
+
+```bash
+npm run test:relevance:team
+```
+
 Optional flags:
 
 ```bash
@@ -132,7 +144,9 @@ npm run test:relevance:baseline:update -- --report-file artifacts/relevance-repo
 Golden query definitions:
 
 - `tests/relevance/golden-queries.json`
-- Current suite size: `28` cases
+- `tests/relevance/team-analyst-prompts-v1.json` (team workflow prompts)
+- Core suite size: `28` cases
+- Extended suite size: `38` cases (core + team v1)
 
 Notes:
 
@@ -145,6 +159,7 @@ Operations docs:
 - Hosted deployment runbook: `docs/HOSTED_RUNBOOK.md`
 - Release relevance checklist: `docs/RELEASE_RELEVANCE_CHECKLIST.md`
 - Quarterly baseline protocol: `docs/BASELINE_UPDATE_PROTOCOL.md`
+- Analyst prompt pack guide: `docs/ANALYST_PROMPT_PACK.md`
 - Phase 2 query normalization plan: `docs/PHASE2_QUERY_NORMALIZATION_PLAN.md`
 
 ## CI Quality Gate

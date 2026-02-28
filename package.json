@@ -7,7 +7,9 @@
   "scripts": {
     "start": "node server.js",
     "test:syntax": "node --check server.js && node --check src/search/providers.js && node --check src/search/ranker.js && node --check public/app.js && node --check scripts/relevance-check.js && node --check scripts/relevance-drift-report.js && node --check scripts/relevance-baseline-update.js",
+    "test:relevance:validate": "node scripts/relevance-check.js --validate-only --file tests/relevance/golden-queries.json --extra-files tests/relevance/team-analyst-prompts-v1.json",
     "test:relevance": "node scripts/relevance-check.js",
+    "test:relevance:team": "node scripts/relevance-check.js --file tests/relevance/golden-queries.json --extra-files tests/relevance/team-analyst-prompts-v1.json",
     "test:relevance:drift": "node scripts/relevance-drift-report.js",
     "test:relevance:baseline:update": "node scripts/relevance-baseline-update.js"
   },
