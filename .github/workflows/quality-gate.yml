@@ -35,7 +35,7 @@ jobs:
     name: Live Relevance Harness
     needs: syntax
     runs-on: ubuntu-latest
-    if: ${{ (github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && secrets.BRAVE_API_KEY != '' }}
+    if: ${{ github.event_name != 'pull_request' }}
     env:
       BRAVE_API_KEY: ${{ secrets.BRAVE_API_KEY }}
     steps:
@@ -51,5 +51,10 @@ jobs:
       - name: Install
         run: npm install --no-audit --no-fund
 
+      - name: Skip relevance when secret is missing
+        if: ${{ env.BRAVE_API_KEY == '' }}
+        run: echo "BRAVE_API_KEY is not set. Skipping live relevance harness."
+
       - name: Run relevance harness
+        if: ${{ env.BRAVE_API_KEY != '' }}
         run: npm run test:relevance -- --delay-ms 250
