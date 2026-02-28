@@ -77,12 +77,18 @@ node scripts/relevance-check.js --max-queries 5 --top-n 8 --delay-ms 300
 Golden query definitions:
 
 - `tests/relevance/golden-queries.json`
+- Current suite size: `28` cases
 
 Notes:
 
 - This harness uses live provider API calls (no mock data).
 - It consumes request quota and may incur cost depending on your plan.
 - It exits non-zero when any golden case fails, so it can be used in CI later.
+
+Operations docs:
+
+- Hosted deployment runbook: `docs/HOSTED_RUNBOOK.md`
+- Release relevance checklist: `docs/RELEASE_RELEVANCE_CHECKLIST.md`
 
 ## CI Quality Gate
 

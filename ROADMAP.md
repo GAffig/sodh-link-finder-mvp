@@ -4,6 +4,8 @@
 
 Goal: reliable access to trusted secondary data sources with deterministic ranking.
 
+Status: COMPLETE
+
 ### Completed
 
 - [x] Minimal MVP with only `Search` + `History` tabs.
@@ -11,18 +13,21 @@ Goal: reliable access to trusted secondary data sources with deterministic ranki
 - [x] Priority-domain Stage A + unrestricted Stage B fallback.
 - [x] Deterministic ranking and priority-source badge rendering.
 - [x] Local search history persistence and replay.
-- [x] Relevance harness with golden queries (`tests/relevance/golden-queries.json`).
+- [x] Relevance harness with expanded golden queries (`tests/relevance/golden-queries.json`, 28 cases).
 - [x] Topic-aware ranking hardening for chronic absenteeism, incarceration, drought, and opportunity atlas queries.
 - [x] Automated CI quality gate for syntax checks and live relevance harness (when `BRAVE_API_KEY` secret is set).
+- [x] Hosted deployment runbook for team usage (`docs/HOSTED_RUNBOOK.md`).
+- [x] Manual release relevance checklist (`docs/RELEASE_RELEVANCE_CHECKLIST.md`).
+- [x] Full live harness validation at 28/28 passing.
 
 ### In Progress
 
-- [ ] Expand golden query set with team-provided real research prompts (target: 25+ cases).
+- [ ] Add team-specific prompts from real analyst workflows to keep evolving the 28-case suite.
 
 ### Next
 
-- [ ] Add deployment runbook for hosted team usage (env setup, secret rotation, incident triage).
-- [ ] Add manual "relevance review checklist" for release approvals before production pushes.
+- [ ] Phase 2 planning: define optional query normalization rules that do not alter authority ranking.
+- [ ] Establish monthly relevance benchmark run and drift report.
 
 ## Phase 2 - Assisted Search (Future)
 

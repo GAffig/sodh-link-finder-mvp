@@ -1,0 +1,92 @@
+# Hosted Deployment Runbook
+
+## Purpose
+
+Operational runbook for hosting the Population Health Evidence Portal for team use.
+
+## Runtime Requirements
+
+- Node.js 20+
+- Outbound network access to search provider API endpoints
+- Environment variables configured on host
+
+## Required Environment Variables
+
+At least one provider key is required:
+
+- `BRAVE_API_KEY` (preferred)
+- `SERPAPI_KEY` (fallback)
+- `BING_API_KEY` (fallback)
+
+Optional:
+
+- `PORT` (defaults to `3000`)
+
+## Deployment Steps
+
+1. Deploy from `master` branch.
+2. Install dependencies:
+   - `npm install --no-audit --no-fund`
+3. Configure environment secrets in host platform.
+4. Start command:
+   - `npm start`
+5. Verify health manually:
+   - Open app URL
+   - Confirm Search tab loads
+   - Run one known query (`Median household income by county Tennessee`)
+
+## Post-Deploy Validation
+
+Run from deployment shell (or staging environment with same env vars):
+
+```bash
+npm run test:syntax
+npm run test:relevance -- --max-queries 5 --delay-ms 250
+```
+
+If either command fails, treat deployment as unhealthy.
+
+## Secret Rotation
+
+1. Generate a new provider key in provider dashboard.
+2. Update host secret (`BRAVE_API_KEY`) with new value.
+3. Restart service.
+4. Run one query in UI and one harness smoke test:
+
+```bash
+npm run test:relevance -- --max-queries 1 --delay-ms 0
+```
+
+## Incident Triage
+
+### Symptom: "Search provider not configured"
+
+- Verify env key exists on host and service was restarted after change.
+
+### Symptom: provider HTTP 401/403
+
+- Verify key validity and account entitlements.
+- Rotate key and redeploy.
+
+### Symptom: provider HTTP 429
+
+- Rate limit exceeded.
+- Reduce traffic, add retry delay operationally, or upgrade provider plan.
+
+### Symptom: unrelated results dominate top links
+
+- Run full relevance harness.
+- Identify failed cases and tune deterministic rules in `src/search/ranker.js`.
+- Re-run harness before redeploy.
+
+## Rollback
+
+1. Re-deploy previous known-good commit from Git history.
+2. Re-run smoke checks:
+
+```bash
+npm run test:syntax
+npm run test:relevance -- --max-queries 3 --delay-ms 250
+```
+
+3. Confirm UI search and history behavior manually.

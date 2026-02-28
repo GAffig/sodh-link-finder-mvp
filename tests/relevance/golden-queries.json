@@ -9,6 +9,24 @@
     "minDistinctDomainsTopN": 3
   },
   {
+    "name": "Poverty rate by county",
+    "query": "Poverty rate by county Tennessee",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["census.gov", "countyhealthrankings.org", "ers.usda.gov"],
+    "minPriorityInTopN": 3,
+    "minDistinctDomainsTopN": 3
+  },
+  {
+    "name": "Child poverty by county",
+    "query": "Child poverty by county Virginia",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["census.gov", "countyhealthrankings.org", "hhs.gov"],
+    "minPriorityInTopN": 3,
+    "minDistinctDomainsTopN": 3
+  },
+  {
     "name": "Uninsured rate (TN + VA)",
     "query": "Uninsured rate by county Tennessee Virginia",
     "topN": 8,
@@ -18,15 +36,42 @@
     "minDistinctDomainsTopN": 3
   },
   {
+    "name": "Medicaid enrollment",
+    "query": "Medicaid enrollment by county Tennessee",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["cms.gov", "tn.gov", "hhs.gov"],
+    "minPriorityInTopN": 2,
+    "minDistinctDomainsTopN": 3
+  },
+  {
+    "name": "Hospital quality ratings",
+    "query": "Hospital quality star ratings Tennessee",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["cms.gov", "tn.gov", "hhs.gov"],
+    "minPriorityInTopN": 2,
+    "minDistinctDomainsTopN": 3
+  },
+  {
     "name": "Chronic absenteeism (TN + VA)",
     "query": "Chronic absent rate for both TN and VA counties",
     "topN": 8,
     "minResults": 8,
     "requiredAnyDomains": ["nces.ed.gov", "tn.gov", "vdh.virginia.gov"],
     "preferredTop1Domains": ["nces.ed.gov", "tn.gov", "vdh.virginia.gov"],
+    "forbiddenTop1Domains": ["data.census.gov"],
     "minPriorityInTopN": 3,
-    "minDistinctDomainsTopN": 3,
-    "forbiddenTop1Domains": ["data.census.gov"]
+    "minDistinctDomainsTopN": 3
+  },
+  {
+    "name": "School enrollment",
+    "query": "School enrollment by county Tennessee",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["nces.ed.gov", "tn.gov", "census.gov"],
+    "minPriorityInTopN": 2,
+    "minDistinctDomainsTopN": 3
   },
   {
     "name": "Food insecurity",
@@ -38,6 +83,15 @@
     "minDistinctDomainsTopN": 3
   },
   {
+    "name": "Food desert map",
+    "query": "Food desert map by county Tennessee",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["ers.usda.gov", "feedingamerica.org", "tn.gov"],
+    "minPriorityInTopN": 2,
+    "minDistinctDomainsTopN": 2
+  },
+  {
     "name": "Life expectancy",
     "query": "Life expectancy by county Virginia",
     "topN": 8,
@@ -47,11 +101,38 @@
     "minDistinctDomainsTopN": 3
   },
   {
+    "name": "Maternal mortality",
+    "query": "Maternal mortality by county Virginia",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["vdh.virginia.gov", "cdc.gov", "hhs.gov"],
+    "minPriorityInTopN": 2,
+    "minDistinctDomainsTopN": 3
+  },
+  {
+    "name": "Immunization coverage",
+    "query": "Immunization coverage by county Tennessee",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["cdc.gov", "tn.gov", "hhs.gov"],
+    "minPriorityInTopN": 2,
+    "minDistinctDomainsTopN": 3
+  },
+  {
     "name": "Incarceration rate",
     "query": "Incarceration rate by county Tennessee",
     "topN": 8,
     "minResults": 8,
     "requiredAnyDomains": ["ucr.fbi.gov", "urban.org", "tn.gov"],
+    "minPriorityInTopN": 2,
+    "minDistinctDomainsTopN": 3
+  },
+  {
+    "name": "Crime rate data",
+    "query": "Crime rate by county Tennessee",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["ucr.fbi.gov", "tn.gov", "urban.org"],
     "minPriorityInTopN": 2,
     "minDistinctDomainsTopN": 3
   },
@@ -65,11 +146,38 @@
     "minDistinctDomainsTopN": 3
   },
   {
+    "name": "Severe rent burden",
+    "query": "Severe rent burden by county Tennessee",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["hud.gov", "countyhealthrankings.org", "census.gov"],
+    "minPriorityInTopN": 2,
+    "minDistinctDomainsTopN": 3
+  },
+  {
+    "name": "Homelessness data",
+    "query": "Homelessness by county Tennessee",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["hud.gov", "tn.gov", "countyhealthrankings.org"],
+    "minPriorityInTopN": 2,
+    "minDistinctDomainsTopN": 3
+  },
+  {
     "name": "Commute time",
     "query": "Average commute time by county Tennessee",
     "topN": 8,
     "minResults": 8,
     "requiredAnyDomains": ["transportation.gov", "census.gov", "cnt.org"],
+    "minPriorityInTopN": 2,
+    "minDistinctDomainsTopN": 3
+  },
+  {
+    "name": "Transit access",
+    "query": "Transit access by county Tennessee",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["transportation.gov", "cnt.org", "tn.gov"],
     "minPriorityInTopN": 2,
     "minDistinctDomainsTopN": 3
   },
@@ -83,12 +191,66 @@
     "minDistinctDomainsTopN": 2
   },
   {
+    "name": "Air quality",
+    "query": "Air quality by county Tennessee",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["epa.gov", "tn.gov", "countyhealthrankings.org"],
+    "minPriorityInTopN": 2,
+    "minDistinctDomainsTopN": 3
+  },
+  {
+    "name": "Lead exposure",
+    "query": "Childhood lead exposure by county Tennessee",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["epa.gov", "cdc.gov", "tn.gov"],
+    "minPriorityInTopN": 2,
+    "minDistinctDomainsTopN": 3
+  },
+  {
+    "name": "Unemployment rate",
+    "query": "Unemployment rate by county Tennessee",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["bls.gov", "tn.gov", "census.gov"],
+    "minPriorityInTopN": 2,
+    "minDistinctDomainsTopN": 3
+  },
+  {
+    "name": "Labor force participation",
+    "query": "Labor force participation by county Virginia",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["bls.gov", "census.gov", "vdh.virginia.gov"],
+    "minPriorityInTopN": 2,
+    "minDistinctDomainsTopN": 3
+  },
+  {
+    "name": "Rural urban classification",
+    "query": "Rural urban classification by county Tennessee",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["ers.usda.gov", "census.gov", "tn.gov"],
+    "minPriorityInTopN": 2,
+    "minDistinctDomainsTopN": 3
+  },
+  {
     "name": "Opportunity Atlas",
     "query": "Income mobility by county opportunity atlas",
     "topN": 8,
     "minResults": 8,
     "requiredAnyDomains": ["opportunityinsights.org"],
     "preferredTop1Domains": ["opportunityinsights.org"],
+    "minPriorityInTopN": 2,
+    "minDistinctDomainsTopN": 2
+  },
+  {
+    "name": "SparkMap profile",
+    "query": "Community health profile sparkmap Tennessee county",
+    "topN": 8,
+    "minResults": 8,
+    "requiredAnyDomains": ["sparkmaps.com", "countyhealthrankings.org"],
     "minPriorityInTopN": 2,
     "minDistinctDomainsTopN": 2
   }

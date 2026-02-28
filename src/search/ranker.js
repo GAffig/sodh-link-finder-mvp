@@ -126,6 +126,21 @@ const TOPIC_DOMAIN_BOOST_RULES = [
     triggerTerms: ["opportunity", "mobility", "atlas"],
     domains: ["opportunityinsights.org"],
     bonus: 560
+  },
+  {
+    triggerTerms: ["medicaid", "medicare", "chip"],
+    domains: ["cms.gov", "tn.gov", "hhs.gov", "acf.hhs.gov"],
+    bonus: 430
+  },
+  {
+    triggerTerms: ["food", "desert", "insecurity"],
+    domains: ["ers.usda.gov", "feedingamerica.org", "tn.gov", "countyhealthrankings.org"],
+    bonus: 390
+  },
+  {
+    triggerTerms: ["transit", "transportation", "commute", "mobility"],
+    domains: ["transportation.gov", "cnt.org", "tn.gov"],
+    bonus: 390
   }
 ];
 
@@ -155,15 +170,17 @@ export async function runSearchPipeline({ query, provider }) {
   // Run topic-focused domain seeds first to pull domain-authoritative links for specialized queries.
   for (const activeRule of queryContext.activeTopicRules) {
     for (const domain of activeRule.domains) {
-      const domainSeedRows = await searchQueryAllow422(provider, `${query} site:${domain}`, 12);
-      appendUniquePriorityRows({
-        rows: domainSeedRows,
-        queryContext,
-        seenUrls,
-        target: stageAPriorityResults,
-        domainCounts: stageADomainCounts,
-        maxPerDomain: 2
-      });
+      for (const seedQuery of buildTopicSeedQueries(queryContext, activeRule, domain, query)) {
+        const domainSeedRows = await searchQueryAllow422(provider, seedQuery, 12);
+        appendUniquePriorityRows({
+          rows: domainSeedRows,
+          queryContext,
+          seenUrls,
+          target: stageAPriorityResults,
+          domainCounts: stageADomainCounts,
+          maxPerDomain: 2
+        });
+      }
     }
   }
 
@@ -441,10 +458,12 @@ function compareByScore(a, b) {
 function buildQueryContext(query) {
   const queryTerms = tokenize(query);
   const coreTerms = queryTerms.filter((term) => !LOW_SIGNAL_TERMS.has(term));
+  const locationTerms = extractLocationTerms(queryTerms);
 
   return {
     queryTerms,
     coreTerms: coreTerms.length > 0 ? coreTerms : queryTerms,
+    locationTerms,
     locationSignals: extractLocationSignals(queryTerms),
     activeTopicRules: TOPIC_DOMAIN_BOOST_RULES.filter((rule) =>
       rule.triggerTerms.some((term) => queryTerms.includes(term))
@@ -501,6 +520,21 @@ function extractLocationSignals(queryTerms) {
   return LOCATION_SIGNAL_GROUPS.filter((group) =>
     group.aliases.some((alias) => presentTerms.has(alias))
   );
+}
+
+function extractLocationTerms(queryTerms) {
+  const found = [];
+  const present = new Set(queryTerms);
+
+  for (const group of LOCATION_SIGNAL_GROUPS) {
+    for (const alias of group.aliases) {
+      if (present.has(alias)) {
+        found.push(alias);
+      }
+    }
+  }
+
+  return [...new Set(found)];
 }
 
 function countLocationSignalMatches(locationSignals, result) {
@@ -600,6 +634,20 @@ function buildDataCensusSeedQueries(query) {
     `${query} site:${DATA_CENSUS_HOST} ${PRIORITY_ASSET_QUERY_SUFFIX}`,
     `${query} site:${DATA_CENSUS_HOST}`
   ];
+}
+
+function buildTopicSeedQueries(queryContext, rule, domain, originalQuery) {
+  const queries = [`${originalQuery} site:${domain}`];
+
+  const baseTerms = rule.triggerTerms.slice(0, 2);
+  const locationTerms = queryContext.locationTerms.slice(0, 2);
+  const focusedTerms = [...baseTerms, ...locationTerms].filter(Boolean).join(" ").trim();
+
+  if (focusedTerms) {
+    queries.push(`${focusedTerms} site:${domain}`);
+  }
+
+  return [...new Set(queries)];
 }
 
 function hasEnoughStageAResults(stageAPriorityResults) {
