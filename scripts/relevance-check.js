@@ -1,4 +1,4 @@
-import { readFileSync } from "fs";
+import { mkdirSync, readFileSync, writeFileSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -36,6 +36,8 @@ async function main() {
   const maxQueries = toPositiveInt(getArg(args, ["max-queries", "maxQueries"]), cases.length);
   const topNDefault = toPositiveInt(getArg(args, ["top-n", "topN"]), 8);
   const delayMs = toPositiveInt(getArg(args, ["delay-ms", "delayMs"]), 250);
+  const reportFile = getArg(args, ["report-file", "reportFile"]);
+  const runStartedAt = Date.now();
 
   const selectedCases = cases.slice(0, maxQueries);
 
@@ -128,10 +130,23 @@ async function main() {
 
   const failed = results.filter((item) => !item.evaluation.pass);
   const passedCount = results.length - failed.length;
+  const report = buildRunReport({
+    provider: provider.name,
+    goldenFile,
+    startedAtMs: runStartedAt,
+    results,
+    passedCount,
+    failedCount: failed.length
+  });
 
   console.log("Summary");
   console.log(`  Passed: ${passedCount}`);
   console.log(`  Failed: ${failed.length}`);
+
+  if (reportFile) {
+    writeReportFile(reportFile, report);
+    console.log(`  Report file: ${reportFile}`);
+  }
 
   if (failed.length > 0) {
     console.log("  Failed cases:");
@@ -264,6 +279,7 @@ function printHelp() {
   console.log("  --top-n <number>      Default top-N window (default: 8)");
   console.log("  --max-queries <n>     Run only first n cases");
   console.log("  --delay-ms <number>   Pause between queries in milliseconds (default: 250)");
+  console.log("  --report-file <path>  Write JSON report file for benchmark/drift tracking");
   console.log("  --help                Show this help");
 }
 
@@ -346,4 +362,40 @@ function loadDotEnv(envPath) {
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function buildRunReport({ provider, goldenFile, startedAtMs, results, passedCount, failedCount }) {
+  const durationMs = Date.now() - startedAtMs;
+  const caseCount = results.length;
+  const passRate = caseCount === 0 ? 0 : passedCount / caseCount;
+
+  return {
+    generatedAt: new Date().toISOString(),
+    provider,
+    goldenFile,
+    caseCount,
+    passedCount,
+    failedCount,
+    passRate,
+    durationMs,
+    cases: results.map((item) => ({
+      name: item.name,
+      query: item.query,
+      pass: item.evaluation.pass,
+      elapsedMs: item.elapsedMs,
+      top1Domain: item.results[0]?.domain || null,
+      topDomains: item.results.slice(0, 8).map((row) => row.domain),
+      checks: item.evaluation.checks
+    }))
+  };
+}
+
+function writeReportFile(reportFile, report) {
+  const absolutePath = path.isAbsolute(reportFile)
+    ? reportFile
+    : path.join(ROOT_DIR, reportFile);
+
+  const outputDir = path.dirname(absolutePath);
+  mkdirSync(outputDir, { recursive: true });
+  writeFileSync(absolutePath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
 }

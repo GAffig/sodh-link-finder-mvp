@@ -74,6 +74,18 @@ Optional flags:
 node scripts/relevance-check.js --max-queries 5 --top-n 8 --delay-ms 300
 ```
 
+Write a benchmark report JSON:
+
+```bash
+npm run test:relevance -- --report-file artifacts/relevance-report.json
+```
+
+Run drift comparison against baseline:
+
+```bash
+npm run test:relevance:drift -- --report-file artifacts/relevance-report.json --baseline-file tests/relevance/baseline-summary.json
+```
+
 Golden query definitions:
 
 - `tests/relevance/golden-queries.json`
@@ -95,11 +107,13 @@ Operations docs:
 GitHub Actions workflow:
 
 - `.github/workflows/quality-gate.yml`
+- `.github/workflows/relevance-benchmark.yml`
 
 What it does:
 
 - Runs syntax checks on every push/PR to `master`.
-- Runs live relevance harness on `push`, scheduled run, or manual dispatch when repository secret `BRAVE_API_KEY` is configured.
+- Runs live relevance harness on push/manual `Quality Gate` when repository secret `BRAVE_API_KEY` is configured.
+- Runs monthly benchmark + drift check (`Relevance Benchmark`) and uploads JSON report artifact.
 
 Repository setup for live harness in CI:
 

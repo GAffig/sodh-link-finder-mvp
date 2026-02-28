@@ -19,6 +19,7 @@ Status: COMPLETE
 - [x] Hosted deployment runbook for team usage (`docs/HOSTED_RUNBOOK.md`).
 - [x] Manual release relevance checklist (`docs/RELEASE_RELEVANCE_CHECKLIST.md`).
 - [x] Full live harness validation at 28/28 passing.
+- [x] Monthly relevance benchmark workflow with drift report and artifact output.
 
 ### In Progress
 
@@ -27,7 +28,7 @@ Status: COMPLETE
 ### Next
 
 - [ ] Phase 2 planning: define optional query normalization rules that do not alter authority ranking.
-- [ ] Establish monthly relevance benchmark run and drift report.
+- [ ] Add baseline update protocol for quarterly recalibration of `tests/relevance/baseline-summary.json`.
 
 ## Phase 2 - Assisted Search (Future)
 

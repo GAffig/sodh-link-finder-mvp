@@ -1,0 +1,44 @@
+name: Relevance Benchmark
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 1 * *"
+
+jobs:
+  benchmark:
+    name: Monthly Relevance Drift Check
+    runs-on: ubuntu-latest
+    env:
+      BRAVE_API_KEY: ${{ secrets.BRAVE_API_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install
+        run: npm install --no-audit --no-fund
+
+      - name: Skip benchmark when secret is missing
+        if: ${{ env.BRAVE_API_KEY == '' }}
+        run: echo "BRAVE_API_KEY is not set. Skipping monthly relevance benchmark."
+
+      - name: Run full relevance harness report
+        if: ${{ env.BRAVE_API_KEY != '' }}
+        run: npm run test:relevance -- --delay-ms 200 --report-file artifacts/relevance-report.json
+
+      - name: Run drift check
+        if: ${{ env.BRAVE_API_KEY != '' }}
+        run: npm run test:relevance:drift -- --report-file artifacts/relevance-report.json --baseline-file tests/relevance/baseline-summary.json
+
+      - name: Upload benchmark artifact
+        if: ${{ env.BRAVE_API_KEY != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: monthly-relevance-report
+          path: artifacts/relevance-report.json
+          if-no-files-found: error

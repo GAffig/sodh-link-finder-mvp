@@ -55,4 +55,12 @@ jobs:
 
       - name: Run relevance harness
         if: ${{ env.BRAVE_API_KEY != '' }}
-        run: npm run test:relevance -- --delay-ms 250
+        run: npm run test:relevance -- --delay-ms 250 --report-file artifacts/relevance-report.json
+
+      - name: Upload relevance report artifact
+        if: ${{ env.BRAVE_API_KEY != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-gate-relevance-report
+          path: artifacts/relevance-report.json
+          if-no-files-found: error
