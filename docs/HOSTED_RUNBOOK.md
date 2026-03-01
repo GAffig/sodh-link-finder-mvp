@@ -28,6 +28,10 @@ Optional:
 - `SEARCH_ESCALATE_MIN_RESULTS` (weak-result threshold, default `8`)
 - `SEARCH_ESCALATE_MIN_PRIORITY_RESULTS` (weak-result threshold, default `3`)
 - `SEARCH_ESCALATE_MIN_DISTINCT_DOMAINS` (weak-result threshold, default `3`)
+- `SEARCH_CACHE_BACKEND` (`auto` default, `memory`, or `redis`)
+- `SEARCH_CACHE_REDIS_URL` (optional override URL for Redis/Valkey cache)
+- `REDIS_URL` (Render Key Value URL; used automatically when present)
+- `SEARCH_CACHE_NAMESPACE` (optional key prefix for shared cache)
 - `SEARCH_CACHE_TTL_MS` (server cache TTL in milliseconds)
 - `SEARCH_CACHE_MAX_ENTRIES` (server cache size cap)
 
@@ -42,6 +46,7 @@ Optional:
      - `SEARCH_MAX_PROVIDER_CALLS=4`
      - `SEARCH_AUTO_ESCALATE_STANDARD=true`
      - `SEARCH_STANDARD_MAX_PROVIDER_CALLS=8`
+     - `SEARCH_CACHE_BACKEND=auto`
      - `SEARCH_CACHE_TTL_MS=604800000`
 4. Start command:
    - `npm start`
@@ -77,6 +82,12 @@ npm run test:relevance -- --max-queries 1 --delay-ms 0
 ```
 
 ## Incident Triage
+
+### Symptom: cache resets after deploy/restart
+
+- Expected with in-memory cache only.
+- Attach a Render Key Value instance and ensure `REDIS_URL` is present.
+- Keep `SEARCH_CACHE_BACKEND=auto` (or set `redis`) for shared cache behavior.
 
 ### Symptom: "Search provider not configured"
 

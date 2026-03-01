@@ -111,6 +111,7 @@ function renderSearchConfigNote(config) {
   const mode = String(cost.mode || "economy");
   const limit = Number(cost.providerRequestLimit || 0);
   const cacheEnabled = Boolean(cache.enabled);
+  const cacheBackend = String(cache.backend || "memory");
   const cacheTtl = Number(cache.ttlMs || 0);
   const escalationText = escalation.enabled ? "on" : "off";
 
@@ -121,7 +122,7 @@ function renderSearchConfigNote(config) {
 
   const limitText = Number.isFinite(limit) && limit > 0 ? String(limit) : "n/a";
   const cacheText = cacheEnabled ? formatDuration(cacheTtl) : "off";
-  searchConfigNote.textContent = `Efficiency mode: ${mode}. Provider call cap/search: ${limitText}. Auto-upgrade: ${escalationText}. Server cache TTL: ${cacheText}.`;
+  searchConfigNote.textContent = `Efficiency mode: ${mode}. Provider call cap/search: ${limitText}. Auto-upgrade: ${escalationText}. Cache backend: ${cacheBackend}. Server cache TTL: ${cacheText}.`;
 }
 
 async function runSearch() {

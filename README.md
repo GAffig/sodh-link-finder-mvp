@@ -49,6 +49,10 @@ Exact env vars used:
 - `SEARCH_ESCALATE_MIN_RESULTS` (optional weak-result threshold, default `8`)
 - `SEARCH_ESCALATE_MIN_PRIORITY_RESULTS` (optional weak-result threshold, default `3`)
 - `SEARCH_ESCALATE_MIN_DISTINCT_DOMAINS` (optional weak-result threshold, default `3`)
+- `SEARCH_CACHE_BACKEND` (optional: `auto`, `memory`, `redis`; default `auto`)
+- `SEARCH_CACHE_REDIS_URL` (optional override URL for Redis/Valkey cache)
+- `REDIS_URL` (Render Key Value connection URL; used automatically when present)
+- `SEARCH_CACHE_NAMESPACE` (optional key prefix, default `sodh:search-cache:v1`)
 - `SEARCH_CACHE_TTL_MS` (optional server cache TTL in ms, default `604800000` = 7 days)
 - `SEARCH_CACHE_MAX_ENTRIES` (optional cache size cap, default `200`)
 
@@ -100,6 +104,7 @@ This repo includes a Render Blueprint file: `render.yaml`.
      - `SEARCH_MAX_PROVIDER_CALLS=4`
      - `SEARCH_AUTO_ESCALATE_STANDARD=true`
      - `SEARCH_STANDARD_MAX_PROVIDER_CALLS=8`
+     - `SEARCH_CACHE_BACKEND=auto`
      - `SEARCH_CACHE_TTL_MS=604800000`
 5. Create Web Service and wait for deploy.
 
@@ -261,6 +266,7 @@ BING_API_KEY=your_bing_key
   - `SEARCH_COST_MODE=economy` lowers per-search provider calls.
   - `SEARCH_AUTO_ESCALATE_STANDARD=true` upgrades to `standard` only for weak economy results.
   - `SEARCH_CACHE_TTL_MS` caches repeated queries server-side and avoids repeated provider requests.
+  - If `REDIS_URL` is configured (Render Key Value), cache is shared across app restarts/instances.
 
 ## Not Configured Behavior
 

@@ -29,6 +29,10 @@ services:
         value: 3
       - key: SEARCH_ESCALATE_MIN_DISTINCT_DOMAINS
         value: 3
+      - key: SEARCH_CACHE_BACKEND
+        value: auto
+      - key: SEARCH_CACHE_NAMESPACE
+        value: sodh:search-cache:v1
       - key: SEARCH_CACHE_TTL_MS
         value: 604800000
       - key: SEARCH_CACHE_MAX_ENTRIES

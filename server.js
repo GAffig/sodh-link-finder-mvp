@@ -3,6 +3,7 @@ import { readFileSync } from "fs";
 import { readFile, stat } from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
+import { createClient } from "redis";
 
 import {
   ProviderRequestError,
@@ -19,6 +20,10 @@ loadDotEnv();
 const PORT = Number(process.env.PORT || 3000);
 const CACHE_TTL_MS = parsePositiveInt(process.env.SEARCH_CACHE_TTL_MS, 7 * 24 * 60 * 60 * 1000);
 const CACHE_MAX_ENTRIES = parsePositiveInt(process.env.SEARCH_CACHE_MAX_ENTRIES, 200);
+const CACHE_BACKEND_REQUESTED = String(process.env.SEARCH_CACHE_BACKEND || "auto").trim().toLowerCase();
+const CACHE_REDIS_URL = (process.env.SEARCH_CACHE_REDIS_URL || process.env.REDIS_URL || "").trim();
+const CACHE_NAMESPACE = String(process.env.SEARCH_CACHE_NAMESPACE || "sodh:search-cache:v1").trim();
+const CACHE_BACKEND_MODE = resolveCacheBackendMode(CACHE_BACKEND_REQUESTED, CACHE_REDIS_URL);
 const AUTO_ESCALATE_STANDARD = parseBoolean(process.env.SEARCH_AUTO_ESCALATE_STANDARD, true);
 const ESCALATE_MIN_RESULTS = parsePositiveInt(process.env.SEARCH_ESCALATE_MIN_RESULTS, 8);
 const ESCALATE_MIN_PRIORITY_RESULTS = parsePositiveInt(
@@ -30,6 +35,9 @@ const ESCALATE_MIN_DISTINCT_DOMAINS = parsePositiveInt(
   3
 );
 const searchResponseCache = new Map();
+let redisClient = null;
+let redisConnectPromise = null;
+let redisLastConnectFailureAt = 0;
 
 const server = http.createServer(async (req, res) => {
   try {
@@ -56,7 +64,11 @@ const server = http.createServer(async (req, res) => {
         cache: {
           enabled: CACHE_TTL_MS > 0,
           ttlMs: CACHE_TTL_MS,
-          maxEntries: CACHE_MAX_ENTRIES
+          maxEntries: CACHE_MAX_ENTRIES,
+          backend: CACHE_BACKEND_MODE,
+          requestedBackend: CACHE_BACKEND_REQUESTED,
+          shared: CACHE_BACKEND_MODE === "redis",
+          redisUrlConfigured: Boolean(CACHE_REDIS_URL)
         }
       });
     }
@@ -119,7 +131,7 @@ async function handleSearch(req, res) {
     providerName: provider.name,
     costMode: requestedCostConfig.mode
   });
-  const cachedEntry = getCachedSearch(cacheKey);
+  const cachedEntry = await getCachedSearch(cacheKey);
   if (cachedEntry) {
     const cachedMetadata = cachedEntry.metadata || {};
     return respondJson(res, 200, {
@@ -209,7 +221,7 @@ async function handleSearch(req, res) {
         initialMetadata.providerRequestLimit + escalatedMetadata.providerRequestLimit;
     }
 
-    setCachedSearch(cacheKey, {
+    await setCachedSearch(cacheKey, {
       results: selectedOutput.results,
       metadata: mergedMetadata
     });
@@ -297,6 +309,7 @@ function buildSetupSteps() {
     "Add one key: BRAVE_API_KEY, or SERPAPI_KEY, or BING_API_KEY.",
     "Optional cost controls: SEARCH_COST_MODE=economy|standard and SEARCH_MAX_PROVIDER_CALLS=<number>.",
     "Optional auto-upgrade on weak economy results: SEARCH_AUTO_ESCALATE_STANDARD=true.",
+    "Optional shared cache: SEARCH_CACHE_BACKEND=redis and REDIS_URL from Render Key Value.",
     "Restart the app so environment variables reload.",
     "Run a search again from the Search tab."
   ];
@@ -433,16 +446,43 @@ function parseBoolean(value, fallback) {
   return fallback;
 }
 
+function resolveCacheBackendMode(requestedMode, redisUrl) {
+  const normalized = String(requestedMode || "").trim().toLowerCase();
+  if (normalized === "memory") {
+    return "memory";
+  }
+
+  if (normalized === "redis") {
+    return redisUrl ? "redis" : "memory";
+  }
+
+  // auto/default: use redis only when configured, otherwise fallback to memory.
+  return redisUrl ? "redis" : "memory";
+}
+
 function buildSearchCacheKey({ query, providerName, costMode }) {
   const normalizedQuery = query.toLowerCase().replace(/\s+/g, " ").trim();
   return `${providerName}|${costMode}|${normalizedQuery}`;
 }
 
-function getCachedSearch(cacheKey) {
+async function getCachedSearch(cacheKey) {
   if (CACHE_TTL_MS <= 0) {
     return null;
   }
 
+  if (CACHE_BACKEND_MODE === "redis") {
+    const sharedValue = await getCachedSearchRedis(cacheKey);
+    if (sharedValue) {
+      // Keep local memory warm even when redis is primary.
+      setCachedSearchMemory(cacheKey, sharedValue);
+      return sharedValue;
+    }
+  }
+
+  return getCachedSearchMemory(cacheKey);
+}
+
+function getCachedSearchMemory(cacheKey) {
   const entry = searchResponseCache.get(cacheKey);
   if (!entry) {
     return null;
@@ -459,11 +499,24 @@ function getCachedSearch(cacheKey) {
   return entry.value;
 }
 
-function setCachedSearch(cacheKey, value) {
+async function setCachedSearch(cacheKey, value) {
   if (CACHE_TTL_MS <= 0) {
     return;
   }
 
+  if (CACHE_BACKEND_MODE === "redis") {
+    const saved = await setCachedSearchRedis(cacheKey, value);
+    if (saved) {
+      // Also keep local memory hot for this instance.
+      setCachedSearchMemory(cacheKey, value);
+      return;
+    }
+  }
+
+  setCachedSearchMemory(cacheKey, value);
+}
+
+function setCachedSearchMemory(cacheKey, value) {
   if (searchResponseCache.has(cacheKey)) {
     searchResponseCache.delete(cacheKey);
   }
@@ -479,5 +532,108 @@ function setCachedSearch(cacheKey, value) {
       break;
     }
     searchResponseCache.delete(oldestKey);
+  }
+}
+
+async function getCachedSearchRedis(cacheKey) {
+  const client = await getRedisClient();
+  if (!client) {
+    return null;
+  }
+
+  const redisKey = `${CACHE_NAMESPACE}:${cacheKey}`;
+  try {
+    const raw = await client.get(redisKey);
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.results) || typeof parsed.metadata !== "object") {
+      return null;
+    }
+
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+async function setCachedSearchRedis(cacheKey, value) {
+  const client = await getRedisClient();
+  if (!client) {
+    return false;
+  }
+
+  const redisKey = `${CACHE_NAMESPACE}:${cacheKey}`;
+  try {
+    await client.set(redisKey, JSON.stringify(value), { PX: CACHE_TTL_MS });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function getRedisClient() {
+  if (CACHE_BACKEND_MODE !== "redis" || !CACHE_REDIS_URL) {
+    return null;
+  }
+
+  if (redisClient?.isOpen) {
+    return redisClient;
+  }
+
+  if (redisConnectPromise) {
+    return redisConnectPromise;
+  }
+
+  // Avoid tight reconnect loops when unavailable.
+  const now = Date.now();
+  if (now - redisLastConnectFailureAt < 30000) {
+    return null;
+  }
+
+  redisConnectPromise = connectRedisClient();
+  try {
+    return await redisConnectPromise;
+  } finally {
+    redisConnectPromise = null;
+  }
+}
+
+async function connectRedisClient() {
+  const client = createClient({ url: CACHE_REDIS_URL });
+
+  client.on("error", () => {
+    // Runtime errors should not break search; caller falls back to memory cache.
+  });
+
+  try {
+    await client.connect();
+    redisClient = client;
+    return client;
+  } catch {
+    redisLastConnectFailureAt = Date.now();
+    try {
+      await client.quit();
+    } catch {
+      // ignore cleanup errors
+    }
+    return null;
+  }
+}
+
+process.on("SIGINT", shutdownRedisClient);
+process.on("SIGTERM", shutdownRedisClient);
+
+async function shutdownRedisClient() {
+  if (!redisClient?.isOpen) {
+    return;
+  }
+
+  try {
+    await redisClient.quit();
+  } catch {
+    // ignore shutdown errors
   }
 }
