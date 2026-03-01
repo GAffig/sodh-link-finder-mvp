@@ -30,6 +30,6 @@ services:
       - key: SEARCH_ESCALATE_MIN_DISTINCT_DOMAINS
         value: 3
       - key: SEARCH_CACHE_TTL_MS
-        value: 21600000
+        value: 604800000
       - key: SEARCH_CACHE_MAX_ENTRIES
         value: 200

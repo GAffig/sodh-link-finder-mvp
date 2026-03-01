@@ -17,7 +17,7 @@ const PUBLIC_DIR = path.join(__dirname, "public");
 
 loadDotEnv();
 const PORT = Number(process.env.PORT || 3000);
-const CACHE_TTL_MS = parsePositiveInt(process.env.SEARCH_CACHE_TTL_MS, 6 * 60 * 60 * 1000);
+const CACHE_TTL_MS = parsePositiveInt(process.env.SEARCH_CACHE_TTL_MS, 7 * 24 * 60 * 60 * 1000);
 const CACHE_MAX_ENTRIES = parsePositiveInt(process.env.SEARCH_CACHE_MAX_ENTRIES, 200);
 const AUTO_ESCALATE_STANDARD = parseBoolean(process.env.SEARCH_AUTO_ESCALATE_STANDARD, true);
 const ESCALATE_MIN_RESULTS = parsePositiveInt(process.env.SEARCH_ESCALATE_MIN_RESULTS, 8);

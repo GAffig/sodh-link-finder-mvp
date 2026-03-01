@@ -49,7 +49,7 @@ Exact env vars used:
 - `SEARCH_ESCALATE_MIN_RESULTS` (optional weak-result threshold, default `8`)
 - `SEARCH_ESCALATE_MIN_PRIORITY_RESULTS` (optional weak-result threshold, default `3`)
 - `SEARCH_ESCALATE_MIN_DISTINCT_DOMAINS` (optional weak-result threshold, default `3`)
-- `SEARCH_CACHE_TTL_MS` (optional server cache TTL in ms, default `21600000`)
+- `SEARCH_CACHE_TTL_MS` (optional server cache TTL in ms, default `604800000` = 7 days)
 - `SEARCH_CACHE_MAX_ENTRIES` (optional cache size cap, default `200`)
 
 If no key is present, the app runs in **Not Configured** mode and does not perform any search.
@@ -100,7 +100,7 @@ This repo includes a Render Blueprint file: `render.yaml`.
      - `SEARCH_MAX_PROVIDER_CALLS=4`
      - `SEARCH_AUTO_ESCALATE_STANDARD=true`
      - `SEARCH_STANDARD_MAX_PROVIDER_CALLS=8`
-     - `SEARCH_CACHE_TTL_MS=21600000`
+     - `SEARCH_CACHE_TTL_MS=604800000`
 5. Create Web Service and wait for deploy.
 
 After deploy, share the Render URL with teammates.  

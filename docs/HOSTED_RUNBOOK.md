@@ -42,7 +42,7 @@ Optional:
      - `SEARCH_MAX_PROVIDER_CALLS=4`
      - `SEARCH_AUTO_ESCALATE_STANDARD=true`
      - `SEARCH_STANDARD_MAX_PROVIDER_CALLS=8`
-     - `SEARCH_CACHE_TTL_MS=21600000`
+     - `SEARCH_CACHE_TTL_MS=604800000`
 4. Start command:
    - `npm start`
 5. Verify health manually:
