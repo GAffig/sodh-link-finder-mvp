@@ -41,6 +41,8 @@ Exact env vars used:
 - `BRAVE_API_KEY`
 - `SERPAPI_KEY`
 - `BING_API_KEY`
+- `APP_BASIC_AUTH_USER` (optional HTTP Basic Auth username)
+- `APP_BASIC_AUTH_PASS` (optional HTTP Basic Auth password)
 - `PORT` (optional, default `3000`)
 - `SEARCH_COST_MODE` (optional: `economy` or `standard`, default `economy`)
 - `SEARCH_MAX_PROVIDER_CALLS` (optional override for per-search provider call limit)
@@ -55,6 +57,11 @@ Exact env vars used:
 - `SEARCH_CACHE_NAMESPACE` (optional key prefix, default `sodh:search-cache:v1`)
 - `SEARCH_CACHE_TTL_MS` (optional server cache TTL in ms, default `604800000` = 7 days)
 - `SEARCH_CACHE_MAX_ENTRIES` (optional cache size cap, default `200`)
+- `SEARCH_RATE_LIMIT_WINDOW_MS` (optional search rate-limit window in ms, default `60000`)
+- `SEARCH_RATE_LIMIT_MAX_REQUESTS` (optional max searches per window/IP, default `20`)
+- `SEARCH_RATE_LIMIT_BLOCK_MS` (optional temporary block duration in ms, default `300000`)
+- `SEARCH_MAX_BODY_BYTES` (optional max request body size, default `8192`)
+- `SEARCH_MAX_QUERY_CHARS` (optional max query length, default `180`)
 
 If no key is present, the app runs in **Not Configured** mode and does not perform any search.
 
@@ -99,6 +106,9 @@ This repo includes a Render Blueprint file: `render.yaml`.
    - Start Command: `npm start`
 4. Add environment variable(s):
    - `BRAVE_API_KEY` (preferred), or fallback keys above
+   - Recommended private access control:
+     - `APP_BASIC_AUTH_USER=<team_user>`
+     - `APP_BASIC_AUTH_PASS=<strong_password>`
    - Recommended cost controls:
      - `SEARCH_COST_MODE=economy`
      - `SEARCH_MAX_PROVIDER_CALLS=4`
@@ -267,6 +277,10 @@ BING_API_KEY=your_bing_key
   - `SEARCH_AUTO_ESCALATE_STANDARD=true` upgrades to `standard` only for weak economy results.
   - `SEARCH_CACHE_TTL_MS` caches repeated queries server-side and avoids repeated provider requests.
   - If `REDIS_URL` is configured (Render Key Value), cache is shared across app restarts/instances.
+- Security hardening:
+  - Optional HTTP Basic Auth gate for all app/API routes.
+  - Per-IP rate limiting on search endpoint.
+  - Request body size and query length guards.
 
 ## Not Configured Behavior
 

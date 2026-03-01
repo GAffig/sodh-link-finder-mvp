@@ -5,7 +5,7 @@ services:
     buildCommand: npm install --no-audit --no-fund
     startCommand: npm start
     autoDeploy: true
-    healthCheckPath: /
+    healthCheckPath: /api/healthz
     envVars:
       - key: NODE_VERSION
         value: 20
@@ -37,3 +37,13 @@ services:
         value: 604800000
       - key: SEARCH_CACHE_MAX_ENTRIES
         value: 200
+      - key: SEARCH_RATE_LIMIT_WINDOW_MS
+        value: 60000
+      - key: SEARCH_RATE_LIMIT_MAX_REQUESTS
+        value: 20
+      - key: SEARCH_RATE_LIMIT_BLOCK_MS
+        value: 300000
+      - key: SEARCH_MAX_BODY_BYTES
+        value: 8192
+      - key: SEARCH_MAX_QUERY_CHARS
+        value: 180

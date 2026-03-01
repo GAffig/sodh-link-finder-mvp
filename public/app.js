@@ -158,9 +158,6 @@ async function runSearch() {
       if (payload?.providerStatusCode) {
         message += ` (provider HTTP ${payload.providerStatusCode})`;
       }
-      if (payload?.details) {
-        message += ` Details: ${String(payload.details).slice(0, 220)}`;
-      }
       showError(message);
 
       if (payload?.code === "NOT_CONFIGURED") {

@@ -38,6 +38,7 @@ Status: COMPLETE
 - [x] Server-side response cache for repeated queries (`SEARCH_CACHE_TTL_MS`, `SEARCH_CACHE_MAX_ENTRIES`).
 - [x] Search UI visibility for efficiency mode and per-search provider call usage metadata.
 - [x] Extended relevance suite baseline established (`tests/relevance/baseline-team-summary.json`) at 38/38 passing.
+- [x] Security hardening: optional Basic Auth, per-IP search rate limits, input-size guards, and stricter response headers.
 
 ## Phase 2 - Assisted Search (Future)
 

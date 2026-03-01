@@ -1,4 +1,5 @@
 import http from "http";
+import { timingSafeEqual } from "crypto";
 import { readFileSync } from "fs";
 import { readFile, stat } from "fs/promises";
 import path from "path";
@@ -18,6 +19,11 @@ const PUBLIC_DIR = path.join(__dirname, "public");
 
 loadDotEnv();
 const PORT = Number(process.env.PORT || 3000);
+const BASIC_AUTH_USER = (process.env.APP_BASIC_AUTH_USER || "").trim();
+const BASIC_AUTH_PASS = (process.env.APP_BASIC_AUTH_PASS || "").trim();
+const BASIC_AUTH_ENABLED = Boolean(BASIC_AUTH_USER && BASIC_AUTH_PASS);
+const MAX_REQUEST_BODY_BYTES = parsePositiveInt(process.env.SEARCH_MAX_BODY_BYTES, 8192);
+const MAX_QUERY_CHARS = parsePositiveInt(process.env.SEARCH_MAX_QUERY_CHARS, 180);
 const CACHE_TTL_MS = parsePositiveInt(process.env.SEARCH_CACHE_TTL_MS, 7 * 24 * 60 * 60 * 1000);
 const CACHE_MAX_ENTRIES = parsePositiveInt(process.env.SEARCH_CACHE_MAX_ENTRIES, 200);
 const CACHE_BACKEND_REQUESTED = String(process.env.SEARCH_CACHE_BACKEND || "auto").trim().toLowerCase();
@@ -34,14 +40,45 @@ const ESCALATE_MIN_DISTINCT_DOMAINS = parsePositiveInt(
   process.env.SEARCH_ESCALATE_MIN_DISTINCT_DOMAINS,
   3
 );
+const SEARCH_RATE_LIMIT_WINDOW_MS = parsePositiveInt(process.env.SEARCH_RATE_LIMIT_WINDOW_MS, 60000);
+const SEARCH_RATE_LIMIT_MAX_REQUESTS = parsePositiveInt(process.env.SEARCH_RATE_LIMIT_MAX_REQUESTS, 20);
+const SEARCH_RATE_LIMIT_BLOCK_MS = parsePositiveInt(process.env.SEARCH_RATE_LIMIT_BLOCK_MS, 300000);
+const SEARCH_RATE_LIMIT_MAX_KEYS = parsePositiveInt(process.env.SEARCH_RATE_LIMIT_MAX_KEYS, 10000);
 const searchResponseCache = new Map();
+const searchRateLimitState = new Map();
 let redisClient = null;
 let redisConnectPromise = null;
 let redisLastConnectFailureAt = 0;
 
+const SECURITY_HEADERS = {
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Referrer-Policy": "no-referrer",
+  "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
+  "Content-Security-Policy": [
+    "default-src 'self'",
+    "script-src 'self'",
+    "connect-src 'self'",
+    "style-src 'self' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data:",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'"
+  ].join("; ")
+};
+
 const server = http.createServer(async (req, res) => {
   try {
     const requestUrl = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
+
+    if (requestUrl.pathname === "/api/healthz" && req.method === "GET") {
+      return respondJson(res, 200, { ok: true });
+    }
+
+    if (BASIC_AUTH_ENABLED && !isRequestAuthorized(req)) {
+      return respondUnauthorized(res);
+    }
 
     if (requestUrl.pathname === "/api/config" && req.method === "GET") {
       const costConfig = getSearchCostConfig({
@@ -60,6 +97,14 @@ const server = http.createServer(async (req, res) => {
           minResults: ESCALATE_MIN_RESULTS,
           minPriorityResults: ESCALATE_MIN_PRIORITY_RESULTS,
           minDistinctDomainsTop8: ESCALATE_MIN_DISTINCT_DOMAINS
+        },
+        security: {
+          basicAuthEnabled: BASIC_AUTH_ENABLED,
+          rateLimitWindowMs: SEARCH_RATE_LIMIT_WINDOW_MS,
+          rateLimitMaxRequests: SEARCH_RATE_LIMIT_MAX_REQUESTS,
+          rateLimitBlockMs: SEARCH_RATE_LIMIT_BLOCK_MS,
+          maxRequestBodyBytes: MAX_REQUEST_BODY_BYTES,
+          maxQueryChars: MAX_QUERY_CHARS
         },
         cache: {
           enabled: CACHE_TTL_MS > 0,
@@ -83,10 +128,7 @@ const server = http.createServer(async (req, res) => {
 
     return respondJson(res, 405, { error: "Method not allowed." });
   } catch (error) {
-    return respondJson(res, 500, {
-      error: "Unexpected server error.",
-      details: String(error)
-    });
+    return respondJson(res, 500, { error: "Unexpected server error." });
   }
 });
 
@@ -117,13 +159,37 @@ async function handleSearch(req, res) {
   let payload;
   try {
     payload = await readJsonBody(req);
-  } catch {
+  } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
+      return respondJson(res, 413, {
+        error: "Request body too large.",
+        maxBytes: MAX_REQUEST_BODY_BYTES
+      });
+    }
     return respondJson(res, 400, { error: "Invalid JSON body." });
   }
 
   const query = String(payload?.query || "").trim();
   if (!query) {
     return respondJson(res, 400, { error: "Query is required." });
+  }
+  if (query.length > MAX_QUERY_CHARS) {
+    return respondJson(res, 400, {
+      error: `Query is too long. Maximum ${MAX_QUERY_CHARS} characters.`
+    });
+  }
+
+  const rateLimit = applySearchRateLimit(req);
+  if (!rateLimit.allowed) {
+    return respondJson(
+      res,
+      429,
+      {
+        error: "Rate limit exceeded for search requests. Try again shortly.",
+        retryAfterSeconds: rateLimit.retryAfterSeconds
+      },
+      { "Retry-After": String(rateLimit.retryAfterSeconds) }
+    );
   }
 
   const cacheKey = buildSearchCacheKey({
@@ -236,18 +302,14 @@ async function handleSearch(req, res) {
   } catch (error) {
     if (error instanceof ProviderRequestError) {
       return respondJson(res, 502, {
-        error: error.message,
+        error: "Search provider request failed.",
         provider: error.provider,
         providerStatusCode: error.statusCode,
-        details: error.details,
         setupSteps: buildSetupSteps()
       });
     }
 
-    return respondJson(res, 500, {
-      error: "Search pipeline failed.",
-      details: String(error)
-    });
+    return respondJson(res, 500, { error: "Search pipeline failed." });
   }
 }
 
@@ -307,6 +369,7 @@ function buildSetupSteps() {
   return [
     "Create a .env file in the project root.",
     "Add one key: BRAVE_API_KEY, or SERPAPI_KEY, or BING_API_KEY.",
+    "Optional API protection: APP_BASIC_AUTH_USER and APP_BASIC_AUTH_PASS.",
     "Optional cost controls: SEARCH_COST_MODE=economy|standard and SEARCH_MAX_PROVIDER_CALLS=<number>.",
     "Optional auto-upgrade on weak economy results: SEARCH_AUTO_ESCALATE_STANDARD=true.",
     "Optional shared cache: SEARCH_CACHE_BACKEND=redis and REDIS_URL from Render Key Value.",
@@ -315,34 +378,41 @@ function buildSetupSteps() {
   ];
 }
 
-function respondJson(res, statusCode, body) {
+function respondJson(res, statusCode, body, extraHeaders = {}) {
   const payload = JSON.stringify(body, null, 2);
-  res.writeHead(statusCode, {
+  res.writeHead(statusCode, withSecurityHeaders({
     "Content-Type": "application/json; charset=utf-8",
-    "Cache-Control": "no-store"
-  });
+    "Cache-Control": "no-store",
+    ...extraHeaders
+  }));
   res.end(payload);
 }
 
 function respondText(res, statusCode, body, type) {
-  res.writeHead(statusCode, {
+  res.writeHead(statusCode, withSecurityHeaders({
     "Content-Type": type,
     "Cache-Control": "no-store"
-  });
+  }));
   res.end(body);
 }
 
 function respondBuffer(res, statusCode, body, type) {
-  res.writeHead(statusCode, {
+  res.writeHead(statusCode, withSecurityHeaders({
     "Content-Type": type,
     "Cache-Control": "no-store"
-  });
+  }));
   res.end(body);
 }
 
 async function readJsonBody(req) {
   let raw = "";
+  let totalBytes = 0;
   for await (const chunk of req) {
+    const chunkBytes = Buffer.isBuffer(chunk) ? chunk.length : Buffer.byteLength(String(chunk));
+    totalBytes += chunkBytes;
+    if (totalBytes > MAX_REQUEST_BODY_BYTES) {
+      throw new RequestBodyTooLargeError();
+    }
     raw += chunk;
   }
   return JSON.parse(raw || "{}");
@@ -372,6 +442,153 @@ function loadDotEnv() {
     }
   } catch {
     // .env is optional; app can still run in Not Configured mode.
+  }
+}
+
+class RequestBodyTooLargeError extends Error {
+  constructor() {
+    super("Request body too large.");
+    this.name = "RequestBodyTooLargeError";
+  }
+}
+
+function withSecurityHeaders(headers) {
+  return {
+    ...SECURITY_HEADERS,
+    ...headers
+  };
+}
+
+function isRequestAuthorized(req) {
+  const authHeader = req.headers.authorization;
+  if (typeof authHeader !== "string") {
+    return false;
+  }
+
+  const match = authHeader.match(/^Basic\s+(.+)$/i);
+  if (!match) {
+    return false;
+  }
+
+  let decoded = "";
+  try {
+    decoded = Buffer.from(match[1], "base64").toString("utf8");
+  } catch {
+    return false;
+  }
+
+  const delimiterIndex = decoded.indexOf(":");
+  if (delimiterIndex === -1) {
+    return false;
+  }
+
+  const username = decoded.slice(0, delimiterIndex);
+  const password = decoded.slice(delimiterIndex + 1);
+
+  return secureCompare(username, BASIC_AUTH_USER) && secureCompare(password, BASIC_AUTH_PASS);
+}
+
+function respondUnauthorized(res) {
+  return respondJson(
+    res,
+    401,
+    { error: "Authentication required." },
+    {
+      "WWW-Authenticate": 'Basic realm="Population Health Evidence Portal", charset="UTF-8"'
+    }
+  );
+}
+
+function secureCompare(left, right) {
+  const leftBuffer = Buffer.from(String(left));
+  const rightBuffer = Buffer.from(String(right));
+
+  if (leftBuffer.length !== rightBuffer.length) {
+    return false;
+  }
+
+  return timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function applySearchRateLimit(req) {
+  const now = Date.now();
+  const clientIp = resolveClientIp(req);
+  const existing = searchRateLimitState.get(clientIp);
+  const state = existing || {
+    windowStart: now,
+    count: 0,
+    blockedUntil: 0
+  };
+
+  if (state.blockedUntil > now) {
+    return {
+      allowed: false,
+      retryAfterSeconds: Math.max(1, Math.ceil((state.blockedUntil - now) / 1000))
+    };
+  }
+
+  if (now - state.windowStart >= SEARCH_RATE_LIMIT_WINDOW_MS) {
+    state.windowStart = now;
+    state.count = 0;
+  }
+
+  state.count += 1;
+
+  if (state.count > SEARCH_RATE_LIMIT_MAX_REQUESTS) {
+    state.blockedUntil = now + SEARCH_RATE_LIMIT_BLOCK_MS;
+    searchRateLimitState.set(clientIp, state);
+
+    if (searchRateLimitState.size > SEARCH_RATE_LIMIT_MAX_KEYS) {
+      pruneRateLimitState(now);
+    }
+
+    return {
+      allowed: false,
+      retryAfterSeconds: Math.max(1, Math.ceil(SEARCH_RATE_LIMIT_BLOCK_MS / 1000))
+    };
+  }
+
+  searchRateLimitState.set(clientIp, state);
+  if (searchRateLimitState.size > SEARCH_RATE_LIMIT_MAX_KEYS) {
+    pruneRateLimitState(now);
+  }
+
+  return { allowed: true, retryAfterSeconds: 0 };
+}
+
+function resolveClientIp(req) {
+  const forwardedFor = req.headers["x-forwarded-for"];
+  if (typeof forwardedFor === "string" && forwardedFor.trim()) {
+    const segments = forwardedFor.split(",").map((item) => item.trim()).filter(Boolean);
+    const first = segments[0];
+    if (first) {
+      return first;
+    }
+  }
+
+  return req.socket?.remoteAddress || "unknown";
+}
+
+function pruneRateLimitState(now) {
+  for (const [key, state] of searchRateLimitState.entries()) {
+    const inactive = state.blockedUntil <= now && (now - state.windowStart) > (SEARCH_RATE_LIMIT_WINDOW_MS * 2);
+    if (inactive) {
+      searchRateLimitState.delete(key);
+    }
+  }
+
+  if (searchRateLimitState.size <= SEARCH_RATE_LIMIT_MAX_KEYS) {
+    return;
+  }
+
+  const overage = searchRateLimitState.size - SEARCH_RATE_LIMIT_MAX_KEYS;
+  let removed = 0;
+  for (const key of searchRateLimitState.keys()) {
+    searchRateLimitState.delete(key);
+    removed += 1;
+    if (removed >= overage) {
+      break;
+    }
   }
 }
 

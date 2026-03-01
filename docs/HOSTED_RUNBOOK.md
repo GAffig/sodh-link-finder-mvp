@@ -21,6 +21,8 @@ At least one provider key is required:
 Optional:
 
 - `PORT` (defaults to `3000`)
+- `APP_BASIC_AUTH_USER` (optional HTTP Basic Auth username)
+- `APP_BASIC_AUTH_PASS` (optional HTTP Basic Auth password)
 - `SEARCH_COST_MODE` (`economy` default, or `standard`)
 - `SEARCH_MAX_PROVIDER_CALLS` (override per-search call cap)
 - `SEARCH_STANDARD_MAX_PROVIDER_CALLS` (override cap for auto-upgraded `standard` reruns)
@@ -34,6 +36,11 @@ Optional:
 - `SEARCH_CACHE_NAMESPACE` (optional key prefix for shared cache)
 - `SEARCH_CACHE_TTL_MS` (server cache TTL in milliseconds)
 - `SEARCH_CACHE_MAX_ENTRIES` (server cache size cap)
+- `SEARCH_RATE_LIMIT_WINDOW_MS` (per-IP search limit window, default `60000`)
+- `SEARCH_RATE_LIMIT_MAX_REQUESTS` (per-IP max searches/window, default `20`)
+- `SEARCH_RATE_LIMIT_BLOCK_MS` (per-IP temporary block duration, default `300000`)
+- `SEARCH_MAX_BODY_BYTES` (max request body bytes, default `8192`)
+- `SEARCH_MAX_QUERY_CHARS` (max query length, default `180`)
 
 ## Deployment Steps
 
@@ -42,6 +49,8 @@ Optional:
    - `npm install --no-audit --no-fund`
 3. Configure environment secrets in host platform.
    - Recommended for cost control:
+     - `APP_BASIC_AUTH_USER=<team_user>`
+     - `APP_BASIC_AUTH_PASS=<strong_password>`
      - `SEARCH_COST_MODE=economy`
      - `SEARCH_MAX_PROVIDER_CALLS=4`
      - `SEARCH_AUTO_ESCALATE_STANDARD=true`
@@ -54,6 +63,7 @@ Optional:
    - Open app URL
    - Confirm Search tab loads
    - Run one known query (`Median household income by county Tennessee`)
+   - Confirm `GET /api/healthz` returns `{"ok":true}`
 
 ## Post-Deploy Validation
 
