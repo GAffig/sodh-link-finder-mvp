@@ -3,6 +3,11 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 import { resolveConfiguredProvider } from "../src/search/providers.js";
+import {
+  normalizeSearchQuery,
+  resolveQueryNormalizationDefault,
+  resolveQueryNormalizationPreference
+} from "../src/search/query-normalizer.js";
 import { runSearchPipeline } from "../src/search/ranker.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -49,6 +54,10 @@ async function main() {
   const reportFile = getArg(args, ["report-file", "reportFile"]);
   const costMode = getArg(args, ["cost-mode", "costMode"]) || process.env.SEARCH_COST_MODE || "standard";
   const maxProviderCalls = getArg(args, ["max-provider-calls", "maxProviderCalls"]);
+  const normalizeQuery = resolveQueryNormalizationPreference(
+    getArg(args, ["normalize-query", "normalizeQuery"]),
+    resolveQueryNormalizationDefault(process.env)
+  );
   const runStartedAt = Date.now();
 
   const selectedCases = cases.slice(0, maxQueries);
@@ -58,6 +67,7 @@ async function main() {
   if (maxProviderCalls) {
     console.log(`Provider call limit override: ${maxProviderCalls}`);
   }
+  console.log(`Query normalization: ${normalizeQuery ? "on" : "off"}`);
   console.log(`Golden file: ${goldenFile}`);
   if (extraFiles.length > 0) {
     console.log(`Extra files: ${extraFiles.join(", ")}`);
@@ -76,8 +86,9 @@ async function main() {
     const startedAt = Date.now();
 
     try {
+      const queryNormalization = normalizeSearchQuery(testCase.query, { enabled: normalizeQuery });
       const pipelineOutput = await runSearchPipeline({
-        query: testCase.query,
+        query: queryNormalization.normalizedQuery,
         provider,
         options: {
           costMode,
@@ -92,6 +103,13 @@ async function main() {
         query: testCase.query,
         elapsedMs,
         topN,
+        normalizedQuery: queryNormalization.normalizedQuery,
+        queryNormalization: {
+          enabled: queryNormalization.enabled,
+          changed: queryNormalization.changed,
+          appliedRuleCount: queryNormalization.appliedRuleCount,
+          appliedRuleTypes: queryNormalization.appliedRuleTypes
+        },
         evaluation,
         results: pipelineOutput.results
       });
@@ -108,6 +126,13 @@ async function main() {
         query: testCase.query,
         elapsedMs,
         topN,
+        normalizedQuery: testCase.query,
+        queryNormalization: {
+          enabled: normalizeQuery,
+          changed: false,
+          appliedRuleCount: 0,
+          appliedRuleTypes: []
+        },
         evaluation: {
           pass: false,
           checks: [{
@@ -133,6 +158,9 @@ async function main() {
     const status = item.evaluation.pass ? "PASS" : "FAIL";
     console.log(`${status} - ${item.name}`);
     console.log(`Query: ${item.query}`);
+    if (item.queryNormalization?.enabled && item.queryNormalization?.changed) {
+      console.log(`Normalized query: ${item.normalizedQuery}`);
+    }
 
     for (const check of item.evaluation.checks) {
       const checkStatus = check.pass ? "ok" : "x";
@@ -308,6 +336,7 @@ function printHelp() {
   console.log("  --delay-ms <number>   Pause between queries in milliseconds (default: 250)");
   console.log("  --cost-mode <mode>    Search cost mode for harness run (default: standard)");
   console.log("  --max-provider-calls <n> Override provider call cap for each query");
+  console.log("  --normalize-query <bool> Enable deterministic query normalization for harness run");
   console.log("  --report-file <path>  Write JSON report file for benchmark/drift tracking");
   console.log("  --validate-only       Validate query files only (no provider calls)");
   console.log("  --help                Show this help");

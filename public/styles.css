@@ -312,6 +312,33 @@ button.secondary {
   color: var(--muted);
 }
 
+.search-options {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toggle-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 0.83rem;
+  font-weight: 700;
+  color: #1f455d;
+}
+
+.toggle-option input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #0f766e;
+}
+
+#normalize-query-note {
+  margin-top: 0;
+  color: #36546b;
+}
+
 #search-config-note {
   margin-top: 4px;
   color: #35566c;

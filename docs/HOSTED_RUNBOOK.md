@@ -23,6 +23,7 @@ Optional:
 - `PORT` (defaults to `3000`)
 - `APP_BASIC_AUTH_USER` (optional HTTP Basic Auth username)
 - `APP_BASIC_AUTH_PASS` (optional HTTP Basic Auth password)
+- `NORMALIZE_QUERY` (default query normalization state, default `false`)
 - `SEARCH_COST_MODE` (`economy` default, or `standard`)
 - `SEARCH_MAX_PROVIDER_CALLS` (override per-search call cap)
 - `SEARCH_STANDARD_MAX_PROVIDER_CALLS` (override cap for auto-upgraded `standard` reruns)
@@ -51,6 +52,7 @@ Optional:
    - Recommended for cost control:
      - `APP_BASIC_AUTH_USER=<team_user>`
      - `APP_BASIC_AUTH_PASS=<strong_password>`
+     - `NORMALIZE_QUERY=false`
      - `SEARCH_COST_MODE=economy`
      - `SEARCH_MAX_PROVIDER_CALLS=4`
      - `SEARCH_AUTO_ESCALATE_STANDARD=true`
@@ -71,6 +73,7 @@ Run from deployment shell (or staging environment with same env vars):
 
 ```bash
 npm run test:syntax
+npm run test:normalization
 npm run test:relevance -- --max-queries 5 --delay-ms 250
 ```
 

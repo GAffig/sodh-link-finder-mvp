@@ -30,6 +30,9 @@ jobs:
       - name: Run syntax checks
         run: npm run test:syntax
 
+      - name: Run normalization tests
+        run: npm run test:normalization
+
   relevance:
     name: Live Relevance Harness
     needs: syntax

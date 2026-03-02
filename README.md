@@ -43,6 +43,7 @@ Exact env vars used:
 - `BING_API_KEY`
 - `APP_BASIC_AUTH_USER` (optional HTTP Basic Auth username)
 - `APP_BASIC_AUTH_PASS` (optional HTTP Basic Auth password)
+- `NORMALIZE_QUERY` (optional default for deterministic query normalization, default `false`)
 - `PORT` (optional, default `3000`)
 - `SEARCH_COST_MODE` (optional: `economy` or `standard`, default `economy`)
 - `SEARCH_MAX_PROVIDER_CALLS` (optional override for per-search provider call limit)
@@ -106,6 +107,8 @@ This repo includes a Render Blueprint file: `render.yaml`.
    - Start Command: `npm start`
 4. Add environment variable(s):
    - `BRAVE_API_KEY` (preferred), or fallback keys above
+   - Optional query assist:
+     - `NORMALIZE_QUERY=false` (default; user can toggle in Search tab)
    - Recommended private access control:
      - `APP_BASIC_AUTH_USER=<team_user>`
      - `APP_BASIC_AUTH_PASS=<strong_password>`
@@ -153,10 +156,22 @@ Harness defaults to `standard` cost mode for baseline comparability. To run lowe
 npm run test:relevance -- --cost-mode economy --max-provider-calls 4
 ```
 
+Run with deterministic query normalization enabled:
+
+```bash
+npm run test:relevance -- --normalize-query true
+```
+
 Optional flags:
 
 ```bash
 node scripts/relevance-check.js --max-queries 5 --top-n 8 --delay-ms 300
+```
+
+Normalization unit checks (no provider calls):
+
+```bash
+npm run test:normalization
 ```
 
 Write a benchmark report JSON:

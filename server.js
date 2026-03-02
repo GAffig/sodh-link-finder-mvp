@@ -12,6 +12,12 @@ import {
   resolveConfiguredProvider
 } from "./src/search/providers.js";
 import { getSearchCostConfig, runSearchPipeline } from "./src/search/ranker.js";
+import {
+  QUERY_NORMALIZATION_VERSION,
+  normalizeSearchQuery,
+  resolveQueryNormalizationDefault,
+  resolveQueryNormalizationPreference
+} from "./src/search/query-normalizer.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,6 +30,7 @@ const BASIC_AUTH_PASS = (process.env.APP_BASIC_AUTH_PASS || "").trim();
 const BASIC_AUTH_ENABLED = Boolean(BASIC_AUTH_USER && BASIC_AUTH_PASS);
 const MAX_REQUEST_BODY_BYTES = parsePositiveInt(process.env.SEARCH_MAX_BODY_BYTES, 8192);
 const MAX_QUERY_CHARS = parsePositiveInt(process.env.SEARCH_MAX_QUERY_CHARS, 180);
+const QUERY_NORMALIZATION_DEFAULT_ENABLED = resolveQueryNormalizationDefault(process.env);
 const CACHE_TTL_MS = parsePositiveInt(process.env.SEARCH_CACHE_TTL_MS, 7 * 24 * 60 * 60 * 1000);
 const CACHE_MAX_ENTRIES = parsePositiveInt(process.env.SEARCH_CACHE_MAX_ENTRIES, 200);
 const CACHE_BACKEND_REQUESTED = String(process.env.SEARCH_CACHE_BACKEND || "auto").trim().toLowerCase();
@@ -106,6 +113,11 @@ const server = http.createServer(async (req, res) => {
           maxRequestBodyBytes: MAX_REQUEST_BODY_BYTES,
           maxQueryChars: MAX_QUERY_CHARS
         },
+        normalization: {
+          defaultEnabled: QUERY_NORMALIZATION_DEFAULT_ENABLED,
+          version: QUERY_NORMALIZATION_VERSION,
+          allowPerRequestToggle: true
+        },
         cache: {
           enabled: CACHE_TTL_MS > 0,
           ttlMs: CACHE_TTL_MS,
@@ -178,6 +190,14 @@ async function handleSearch(req, res) {
       error: `Query is too long. Maximum ${MAX_QUERY_CHARS} characters.`
     });
   }
+  const normalizeQueryEnabled = resolveQueryNormalizationPreference(
+    payload?.normalizeQuery,
+    QUERY_NORMALIZATION_DEFAULT_ENABLED
+  );
+  const queryNormalization = normalizeSearchQuery(query, {
+    enabled: normalizeQueryEnabled
+  });
+  const searchQuery = queryNormalization.normalizedQuery || query;
 
   const rateLimit = applySearchRateLimit(req);
   if (!rateLimit.allowed) {
@@ -193,15 +213,19 @@ async function handleSearch(req, res) {
   }
 
   const cacheKey = buildSearchCacheKey({
-    query,
+    query: searchQuery,
     providerName: provider.name,
-    costMode: requestedCostConfig.mode
+    costMode: requestedCostConfig.mode,
+    normalizationEnabled: queryNormalization.enabled,
+    normalizationVersion: queryNormalization.version
   });
   const cachedEntry = await getCachedSearch(cacheKey);
   if (cachedEntry) {
     const cachedMetadata = cachedEntry.metadata || {};
+    const cachedNormalization = cachedMetadata.queryNormalization || summarizeNormalization(queryNormalization);
     return respondJson(res, 200, {
       query,
+      normalizedQuery: searchQuery,
       timestamp: new Date().toISOString(),
       provider: provider.name,
       results: cachedEntry.results,
@@ -210,6 +234,7 @@ async function handleSearch(req, res) {
         requestedCostMode: cachedMetadata.requestedCostMode || requestedCostConfig.mode,
         effectiveCostMode:
           cachedMetadata.effectiveCostMode || cachedMetadata.costMode || requestedCostConfig.mode,
+        queryNormalization: cachedNormalization,
         cacheHit: true,
         providerRequestCount: 0,
         providerRequestLimit: cachedMetadata.providerRequestLimit || requestedCostConfig.providerRequestLimit
@@ -219,7 +244,7 @@ async function handleSearch(req, res) {
 
   try {
     const initialOutput = await runSearchPipeline({
-      query,
+      query: searchQuery,
       provider,
       options: {
         costMode: requestedCostConfig.mode,
@@ -242,7 +267,7 @@ async function handleSearch(req, res) {
 
       try {
         const standardOutput = await runSearchPipeline({
-          query,
+          query: searchQuery,
           provider,
           options: {
             costMode: "standard",
@@ -274,6 +299,7 @@ async function handleSearch(req, res) {
       autoEscalationAttempted: escalationAttempted,
       autoEscalated: escalationTriggered && selectedMetadata.costMode === "standard",
       autoEscalationReason: escalationReason || null,
+      queryNormalization: summarizeNormalization(queryNormalization),
       providerRequestCountInitial: initialMetadata.providerRequestCount,
       providerRequestLimitInitial: initialMetadata.providerRequestLimit
     };
@@ -294,6 +320,7 @@ async function handleSearch(req, res) {
 
     return respondJson(res, 200, {
       query,
+      normalizedQuery: searchQuery,
       timestamp: new Date().toISOString(),
       provider: provider.name,
       results: selectedOutput.results,
@@ -369,6 +396,7 @@ function buildSetupSteps() {
   return [
     "Create a .env file in the project root.",
     "Add one key: BRAVE_API_KEY, or SERPAPI_KEY, or BING_API_KEY.",
+    "Optional query normalization: NORMALIZE_QUERY=true (default false).",
     "Optional API protection: APP_BASIC_AUTH_USER and APP_BASIC_AUTH_PASS.",
     "Optional cost controls: SEARCH_COST_MODE=economy|standard and SEARCH_MAX_PROVIDER_CALLS=<number>.",
     "Optional auto-upgrade on weak economy results: SEARCH_AUTO_ESCALATE_STANDARD=true.",
@@ -600,7 +628,18 @@ function normalizeSearchMetadata(rawMetadata, costConfig) {
     providerRequestCount: Number(metadata.providerRequestCount || 0),
     providerRequestLimit: Number(metadata.providerRequestLimit || costConfig.providerRequestLimit),
     priorityResultCount: Number(metadata.priorityResultCount || 0),
-    totalResultCount: Number(metadata.totalResultCount || 0)
+    totalResultCount: Number(metadata.totalResultCount || 0),
+    queryNormalization: metadata.queryNormalization || null
+  };
+}
+
+function summarizeNormalization(normalization) {
+  return {
+    version: normalization.version,
+    enabled: normalization.enabled,
+    changed: normalization.changed,
+    appliedRuleCount: normalization.appliedRuleCount,
+    appliedRuleTypes: normalization.appliedRuleTypes
   };
 }
 
@@ -677,9 +716,17 @@ function resolveCacheBackendMode(requestedMode, redisUrl) {
   return redisUrl ? "redis" : "memory";
 }
 
-function buildSearchCacheKey({ query, providerName, costMode }) {
+function buildSearchCacheKey({
+  query,
+  providerName,
+  costMode,
+  normalizationEnabled,
+  normalizationVersion
+}) {
   const normalizedQuery = query.toLowerCase().replace(/\s+/g, " ").trim();
-  return `${providerName}|${costMode}|${normalizedQuery}`;
+  const normalizeFlag = normalizationEnabled ? "norm-on" : "norm-off";
+  const version = normalizationEnabled ? normalizationVersion : "none";
+  return `${providerName}|${costMode}|${normalizeFlag}|${version}|${normalizedQuery}`;
 }
 
 async function getCachedSearch(cacheKey) {

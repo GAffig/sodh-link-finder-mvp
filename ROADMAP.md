@@ -39,10 +39,11 @@ Status: COMPLETE
 - [x] Search UI visibility for efficiency mode and per-search provider call usage metadata.
 - [x] Extended relevance suite baseline established (`tests/relevance/baseline-team-summary.json`) at 38/38 passing.
 - [x] Security hardening: optional Basic Auth, per-IP search rate limits, input-size guards, and stricter response headers.
+- [x] Phase 2 deterministic query normalization shipped (optional toggle + backend env default + history metadata).
 
 ## Phase 2 - Assisted Search (Future)
 
-- [ ] Optional query normalization and typo correction without changing authority ranking rules.
+- [x] Optional query normalization and typo correction without changing authority ranking rules.
 - [x] Planning spec drafted (`docs/PHASE2_QUERY_NORMALIZATION_PLAN.md`).
 
 ## Phase 3 - Intelligence Layer (Long-Term)
