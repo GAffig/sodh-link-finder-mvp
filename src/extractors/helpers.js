@@ -98,6 +98,89 @@ export function asAbsoluteUrl(href, baseUrl) {
   }
 }
 
+export function parseCsvRecords(csvText) {
+  const rows = parseCsvRows(csvText);
+  if (rows.length === 0) {
+    return [];
+  }
+
+  const header = rows[0].map((value) => String(value || "").trim());
+  const records = [];
+
+  for (let rowIndex = 1; rowIndex < rows.length; rowIndex += 1) {
+    const row = rows[rowIndex];
+    if (!row || row.length === 0) {
+      continue;
+    }
+
+    const record = {};
+    for (let columnIndex = 0; columnIndex < header.length; columnIndex += 1) {
+      const key = header[columnIndex] || `column_${columnIndex + 1}`;
+      record[key] = row[columnIndex] ?? "";
+    }
+    records.push(record);
+  }
+
+  return records;
+}
+
+export function parseCsvRows(csvText) {
+  const text = String(csvText || "");
+  if (!text) {
+    return [];
+  }
+
+  const rows = [];
+  let currentRow = [];
+  let currentCell = "";
+  let inQuotes = false;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    const nextChar = text[index + 1];
+
+    if (char === "\"") {
+      if (inQuotes && nextChar === "\"") {
+        currentCell += "\"";
+        index += 1;
+        continue;
+      }
+      inQuotes = !inQuotes;
+      continue;
+    }
+
+    if (!inQuotes && char === ",") {
+      currentRow.push(currentCell);
+      currentCell = "";
+      continue;
+    }
+
+    if (!inQuotes && (char === "\n" || char === "\r")) {
+      if (char === "\r" && nextChar === "\n") {
+        index += 1;
+      }
+      currentRow.push(currentCell);
+      currentCell = "";
+      if (currentRow.some((cell) => String(cell).trim() !== "")) {
+        rows.push(currentRow);
+      }
+      currentRow = [];
+      continue;
+    }
+
+    currentCell += char;
+  }
+
+  if (currentCell.length > 0 || currentRow.length > 0) {
+    currentRow.push(currentCell);
+    if (currentRow.some((cell) => String(cell).trim() !== "")) {
+      rows.push(currentRow);
+    }
+  }
+
+  return rows;
+}
+
 function escapeCsvCell(value) {
   if (value === undefined || value === null) {
     return "";

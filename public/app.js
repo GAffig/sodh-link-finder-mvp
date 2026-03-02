@@ -23,9 +23,11 @@ const extractPanel = document.getElementById("extract-panel");
 const extractCloseButton = document.getElementById("extract-close");
 const extractTarget = document.getElementById("extract-target");
 const extractSource = document.getElementById("extract-source");
+const extractMode = document.getElementById("extract-mode");
 const extractYear = document.getElementById("extract-year");
 const extractState = document.getElementById("extract-state");
 const extractMeasure = document.getElementById("extract-measure");
+const extractMaxFiles = document.getElementById("extract-max-files");
 const extractFormat = document.getElementById("extract-format");
 const extractRunButton = document.getElementById("extract-run");
 const extractStatus = document.getElementById("extract-status");
@@ -377,6 +379,12 @@ function openExtractPanel(result) {
   if (extractFormat) {
     extractFormat.value = "csv";
   }
+  if (extractMode) {
+    extractMode.value = "catalog";
+  }
+  if (extractMaxFiles) {
+    extractMaxFiles.value = "3";
+  }
   clearExtractResultLinks();
   setExtractStatus("");
   applyExtractSourceDefaults();
@@ -401,6 +409,9 @@ function applyExtractSourceDefaults() {
   const selected = activeExtractContext.extractorMap?.[selectedSourceId];
   const defaults = selected?.defaults || {};
 
+  if (extractMode) {
+    extractMode.value = String(defaults.mode || "catalog");
+  }
   if (extractYear) {
     const year = defaults.vintage || defaults.year || "";
     extractYear.value = year ? String(year) : "";
@@ -412,6 +423,10 @@ function applyExtractSourceDefaults() {
   if (extractMeasure) {
     const measureId = defaults.measureId || "";
     extractMeasure.value = measureId ? String(measureId) : "";
+  }
+  if (extractMaxFiles) {
+    const maxFiles = Number(defaults.maxFiles || 3);
+    extractMaxFiles.value = Number.isFinite(maxFiles) && maxFiles > 0 ? String(maxFiles) : "3";
   }
   if (extractFormat) {
     const formats = Array.isArray(selected?.supportedOutputFormats)
@@ -443,6 +458,7 @@ async function runExtractJob() {
   const selectedSourceId = extractSource.value;
   const selected = activeExtractContext.extractorMap?.[selectedSourceId] || {};
   const outputFormat = String(extractFormat?.value || "csv");
+  const selectedMode = String(extractMode?.value || selected.defaults?.mode || "catalog");
   const parameters = {
     ...(selected.defaults || {})
   };
@@ -450,6 +466,7 @@ async function runExtractJob() {
   const yearValue = String(extractYear?.value || "").trim();
   const stateValue = String(extractState?.value || "").trim();
   const measureValue = String(extractMeasure?.value || "").trim();
+  const maxFilesValue = String(extractMaxFiles?.value || "").trim();
 
   if (yearValue) {
     parameters.year = yearValue;
@@ -462,9 +479,24 @@ async function runExtractJob() {
   if (measureValue) {
     parameters.measureId = measureValue;
     parameters.measure = measureValue;
+    parameters.sectionContains = measureValue;
+  }
+  if (selectedMode) {
+    parameters.mode = selectedMode;
+  }
+  if (maxFilesValue) {
+    parameters.maxFiles = maxFilesValue;
   }
   if (selectedSourceId === "tdh_death_stats") {
     parameters.indexUrl = activeExtractContext.url;
+    if (!parameters.mode) {
+      parameters.mode = "tidy";
+    }
+  }
+  if (selectedSourceId === "cdc_wonder") {
+    if (!parameters.templateId) {
+      parameters.templateId = "mortality_county_v1";
+    }
   }
 
   extractRunButton.disabled = true;

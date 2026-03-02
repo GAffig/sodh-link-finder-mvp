@@ -142,8 +142,8 @@ Current extractor modules:
 
 - `cdc_places` (Socrata API)
 - `census_acs` (Census Data API)
-- `cdc_wonder` (template-driven; explicit request body required)
-- `tdh_death_stats` (download-index extraction from TN pages)
+- `cdc_wonder` (template-driven execution with reproducible request body metadata)
+- `tdh_death_stats` (download-index extraction plus optional tidy conversion for CSV/XLSX)
 
 Extraction API endpoints:
 
@@ -154,6 +154,11 @@ Extraction API endpoints:
 - `GET /api/extract/jobs/{jobId}/manifest`
 
 Every extraction run returns a downloadable data file and a reproducibility manifest containing request details and a SHA-256 hash.
+
+TDH extractor modes:
+
+- `catalog` -> returns a structured catalog of downloadable TDH files.
+- `tidy` -> downloads matching CSV/XLS/XLSX files and converts rows into standardized output columns.
 
 ## Relevance Regression Harness
 

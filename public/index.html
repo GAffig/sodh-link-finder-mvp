@@ -69,6 +69,13 @@
               <select id="extract-source"></select>
             </label>
             <label>
+              Mode
+              <select id="extract-mode">
+                <option value="catalog">Catalog</option>
+                <option value="tidy">Tidy table</option>
+              </select>
+            </label>
+            <label>
               Year
               <input id="extract-year" type="number" placeholder="2023" min="1900" max="2100" />
             </label>
@@ -77,8 +84,12 @@
               <input id="extract-state" type="text" placeholder="TN or 47" />
             </label>
             <label>
-              Measure ID
-              <input id="extract-measure" type="text" placeholder="optional (e.g., median_household_income)" />
+              Measure/Section
+              <input id="extract-measure" type="text" placeholder="optional (measure id or section filter)" />
+            </label>
+            <label>
+              Max files
+              <input id="extract-max-files" type="number" min="1" max="10" placeholder="3" />
             </label>
             <label>
               Format
