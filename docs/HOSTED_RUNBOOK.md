@@ -18,6 +18,12 @@ At least one provider key is required:
 - `SERPAPI_KEY` (fallback)
 - `BING_API_KEY` (fallback)
 
+Recommended production setup:
+
+- Set both `BRAVE_API_KEY` and `SERPAPI_KEY`.
+- Brave stays primary.
+- The app falls back to SerpApi automatically when Brave returns provider-side failures such as `401`, `402`, `403`, `429`, or `5xx`.
+
 Optional:
 
 - `PORT` (defaults to `3000`)
@@ -55,6 +61,9 @@ Optional:
 2. Install dependencies:
    - `npm install --no-audit --no-fund`
 3. Configure environment secrets in host platform.
+   - Recommended provider setup:
+     - `BRAVE_API_KEY=<required primary key>`
+     - `SERPAPI_KEY=<recommended fallback key>`
    - Recommended for cost control:
      - `APP_BASIC_AUTH_USER=<team_user>`
      - `APP_BASIC_AUTH_PASS=<strong_password>`

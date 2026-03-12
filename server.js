@@ -622,7 +622,8 @@ function contentType(filePath) {
 function buildSetupSteps() {
   return [
     "Create a .env file in the project root.",
-    "Add one key: BRAVE_API_KEY, or SERPAPI_KEY, or BING_API_KEY.",
+    "Add at least one provider key: BRAVE_API_KEY, SERPAPI_KEY, or BING_API_KEY.",
+    "Recommended: set both BRAVE_API_KEY and SERPAPI_KEY so SerpApi can act as automatic fallback if Brave fails.",
     "Optional query normalization: NORMALIZE_QUERY=true (default false).",
     "Optional extract cache controls: EXTRACT_CACHE_TTL_MS and EXTRACT_LINK_CATALOG_TTL_MS.",
     "Optional API protection: APP_BASIC_AUTH_USER and APP_BASIC_AUTH_PASS.",

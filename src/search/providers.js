@@ -57,29 +57,79 @@ export function getProviderSelectionStatus(env = process.env) {
 }
 
 export function resolveConfiguredProvider(env = process.env) {
-  for (const { envVar, provider } of PROVIDER_ENV_ORDER) {
-    const key = (env[envVar] || "").trim();
-    if (!key) {
-      continue;
-    }
-
-    return {
-      name: provider,
-      envVar,
-      async searchWeb(query, options = {}) {
-        const count = options.count ?? 30;
-        if (provider === "brave") {
-          return searchBrave(key, query, count);
-        }
-        if (provider === "serpapi") {
-          return searchSerpApi(key, query, count);
-        }
-        return searchBing(key, query, count);
+  const configuredProviders = PROVIDER_ENV_ORDER
+    .map(({ envVar, provider }) => {
+      const key = String(env[envVar] || "").trim();
+      if (!key) {
+        return null;
       }
-    };
+
+      return createProviderClient(provider, envVar, key);
+    })
+    .filter(Boolean);
+
+  if (configuredProviders.length === 0) {
+    return null;
   }
 
-  return null;
+  const primary = configuredProviders[0];
+  let activeProviderIndex = 0;
+
+  return {
+    name: primary.name,
+    envVar: primary.envVar,
+    async searchWeb(query, options = {}) {
+      const count = options.count ?? 30;
+      let lastError = null;
+
+      for (let index = activeProviderIndex; index < configuredProviders.length; index += 1) {
+        const provider = configuredProviders[index];
+        try {
+          const rows = await provider.searchWeb(query, { count });
+          activeProviderIndex = index;
+          return rows;
+        } catch (error) {
+          lastError = error;
+          if (!shouldFailoverProviderError(error) || index === configuredProviders.length - 1) {
+            throw error;
+          }
+        }
+      }
+
+      throw lastError;
+    }
+  };
+}
+
+function createProviderClient(provider, envVar, key) {
+  return {
+    name: provider,
+    envVar,
+    async searchWeb(query, options = {}) {
+      const count = options.count ?? 30;
+      if (provider === "brave") {
+        return searchBrave(key, query, count);
+      }
+      if (provider === "serpapi") {
+        return searchSerpApi(key, query, count);
+      }
+      return searchBing(key, query, count);
+    }
+  };
+}
+
+function shouldFailoverProviderError(error) {
+  if (!(error instanceof ProviderRequestError)) {
+    return false;
+  }
+
+  const statusCode = Number(error.statusCode || 0);
+  return statusCode === 401
+    || statusCode === 402
+    || statusCode === 403
+    || statusCode === 408
+    || statusCode === 429
+    || statusCode >= 500;
 }
 
 async function searchBrave(apiKey, query, count) {

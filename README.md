@@ -38,6 +38,10 @@ Provider selection order (automatic):
 2. `SERPAPI_KEY`
 3. `BING_API_KEY`
 
+Failover behavior:
+- If both `BRAVE_API_KEY` and `SERPAPI_KEY` are set, Brave remains primary.
+- The app automatically falls back to SerpApi when Brave returns provider-side failures such as `401`, `402`, `403`, `429`, or `5xx`.
+
 Exact env vars used:
 - `BRAVE_API_KEY`
 - `SERPAPI_KEY`
@@ -102,6 +106,7 @@ This repo includes a Render Blueprint file: `render.yaml`.
    - `BRAVE_API_KEY` (preferred), or
    - `SERPAPI_KEY`, or
    - `BING_API_KEY`
+   - For automatic failover in production, set both `BRAVE_API_KEY` and `SERPAPI_KEY`.
 6. Deploy and open the generated `onrender.com` URL.
 
 ### Option B: Manual Web Service
@@ -113,7 +118,8 @@ This repo includes a Render Blueprint file: `render.yaml`.
    - Build Command: `npm install --no-audit --no-fund`
    - Start Command: `npm start`
 4. Add environment variable(s):
-   - `BRAVE_API_KEY` (preferred), or fallback keys above
+   - `BRAVE_API_KEY` (preferred)
+   - `SERPAPI_KEY` (recommended fallback if Brave quota/billing is exhausted)
    - Optional query assist:
      - `NORMALIZE_QUERY=false` (default; user can toggle in Search tab)
    - Optional extractor API credentials:
@@ -310,7 +316,7 @@ BRAVE_API_KEY=your_brave_key
 
 1. Create a SerpAPI account.
 2. Copy your API key from the dashboard.
-3. Put it in `.env`:
+3. Put it in `.env` alongside `BRAVE_API_KEY` if you want automatic fallback:
 
 ```env
 SERPAPI_KEY=your_serpapi_key
