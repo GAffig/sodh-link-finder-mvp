@@ -69,7 +69,7 @@
     "query": "School enrollment by county Tennessee",
     "topN": 8,
     "minResults": 8,
-    "requiredAnyDomains": ["nces.ed.gov", "tn.gov", "data.census.gov"],
+    "requiredAnyDomains": ["nces.ed.gov", "tn.gov", "data.census.gov", "countyhealthrankings.org"],
     "minPriorityInTopN": 2,
     "minDistinctDomainsTopN": 3
   },
@@ -132,7 +132,7 @@
     "query": "Crime rate by county Tennessee",
     "topN": 8,
     "minResults": 8,
-    "requiredAnyDomains": ["ucr.fbi.gov", "tn.gov", "urban.org"],
+    "requiredAnyDomains": ["ucr.fbi.gov", "tn.gov", "urban.org", "countyhealthrankings.org"],
     "minPriorityInTopN": 2,
     "minDistinctDomainsTopN": 3
   },
